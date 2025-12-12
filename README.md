@@ -1,5 +1,7 @@
 # MCP Read-Only Argo CD Server
 
+[![Tests](https://github.com/lukleh/mcp-read-only-argocd/actions/workflows/test.yml/badge.svg)](https://github.com/lukleh/mcp-read-only-argocd/actions/workflows/test.yml)
+
 A secure MCP (Model Context Protocol) server that provides **read-only** access to Argo CD instances using browser session cookies.
 
 ## Features
