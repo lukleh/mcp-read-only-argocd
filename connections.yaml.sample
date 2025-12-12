@@ -1,0 +1,38 @@
+# MCP Read-Only Argo CD Server - Connection Configuration Sample
+# Copy this file to connections.yaml and customize for your Argo CD instances
+
+# Staging Argo CD instance
+- connection_name: staging
+  url: https://argocd.example.com
+  description: Staging Argo CD instance
+  # Optional: override default timeout (30 seconds)
+  # timeout: 60
+
+# Production Argo CD instance
+- connection_name: production
+  url: https://argocd-prod.example.com
+  description: Production environment Argo CD
+  # Optional settings:
+  # timeout: 30
+  # verify_ssl: true  # Set to false for self-signed certificates (not recommended)
+
+# Local development Argo CD
+- connection_name: local
+  url: http://localhost:8080
+  description: Local development Argo CD
+  # For local instances, you might want to disable SSL verification
+  verify_ssl: false
+
+# Notes:
+# - Session tokens are read from environment variables:
+#     ARGOCD_SESSION_<CONNECTION_NAME> (e.g., ARGOCD_SESSION_STAGING)
+#
+# - To get your session token:
+#     1. Log into Argo CD web UI
+#     2. Open browser developer tools (F12)
+#     3. Go to Application tab -> Cookies
+#     4. Copy the value of 'argocd.token' cookie
+#
+# - Connection names should use only letters, numbers, underscores, and hyphens
+# - URLs should not include trailing slashes
+# - Credentials are reloaded from .env before each request to support token rotation
