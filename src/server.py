@@ -12,13 +12,14 @@ from typing import Dict
 
 from mcp.server.fastmcp import FastMCP
 
-from .config import ConfigParser, ArgoCDConnection
 from .argocd_connector import ArgoCDConnector
+from .config import ArgoCDConnection, ConfigParser
+from .runtime_paths import resolve_runtime_paths, RuntimePaths
 from .tools import (
-    register_core_tools,
     register_application_tools,
-    register_project_tools,
     register_cluster_tools,
+    register_core_tools,
+    register_project_tools,
     register_repository_tools,
 )
 
@@ -27,106 +28,120 @@ logger = logging.getLogger(__name__)
 
 
 class ReadOnlyArgoCDServer:
-    """MCP Read-Only Argo CD Server using FastMCP"""
+    """MCP Read-Only Argo CD Server using FastMCP."""
 
-    def __init__(self, config_path: str = "connections.yaml"):
-        """Initialize the server with configuration
-
-        Args:
-            config_path: Path to the connections.yaml configuration file
-        """
-        self.config_path = config_path
+    def __init__(self, runtime_paths: RuntimePaths):
+        self.runtime_paths = runtime_paths
         self.connections: Dict[str, ArgoCDConnection] = {}
         self.connectors: Dict[str, ArgoCDConnector] = {}
 
-        # Initialize FastMCP server
         self.mcp = FastMCP("mcp-read-only-argocd")
 
-        # Load connections
         self._load_connections()
-
-        # Register tools from domain modules
         self._register_tools()
 
-    def _load_connections(self):
-        """Load all connections from config file"""
-        parser = ConfigParser(self.config_path)
+    def _load_connections(self) -> None:
+        parser = ConfigParser(
+            self.runtime_paths.connections_file,
+            secrets_path=self.runtime_paths.secrets_file,
+            state_path=self.runtime_paths.state_file,
+        )
 
         try:
             connections = parser.load_config()
         except FileNotFoundError:
-            logger.warning(f"Configuration file not found: {self.config_path}")
-            logger.info(
-                "Please create a connections.yaml file from connections.yaml.sample"
+            logger.warning(
+                "Configuration file not found: %s",
+                self.runtime_paths.connections_file,
             )
+            logger.info("Expected Argo CD config at %s", self.runtime_paths.config_dir)
             return
-        except Exception as e:
-            logger.error(f"Failed to load configuration: {e}")
+        except Exception as exc:
+            logger.error("Failed to load configuration: %s", exc)
             raise
 
-        for conn in connections:
-            self.connections[conn.connection_name] = conn
-            self.connectors[conn.connection_name] = ArgoCDConnector(conn)
-            logger.info(f"Loaded connection: {conn.connection_name} ({conn.url})")
+        for connection in connections:
+            self.connections[connection.connection_name] = connection
+            self.connectors[connection.connection_name] = ArgoCDConnector(connection)
+            logger.info(
+                "Loaded connection: %s (%s)",
+                connection.connection_name,
+                connection.url,
+            )
 
-    def _register_tools(self):
-        """Register all MCP tools organized by domain."""
-        # Core tools (list_connections, get_version, get_settings)
+    def _register_tools(self) -> None:
         register_core_tools(self.mcp, self.connectors, self.connections)
-
-        # Application tools
         register_application_tools(self.mcp, self.connectors)
-
-        # Project tools
         register_project_tools(self.mcp, self.connectors)
-
-        # Cluster tools
         register_cluster_tools(self.mcp, self.connectors)
-
-        # Repository tools
         register_repository_tools(self.mcp, self.connectors)
 
-    async def cleanup(self):
-        """Clean up resources"""
+    async def cleanup(self) -> None:
         for connector in self.connectors.values():
             await connector.close()
 
-    def run(self):
-        """Run the FastMCP server"""
+    def run(self) -> None:
         if not self.connections:
             logger.warning(
                 "No connections loaded. Server will run with limited functionality."
             )
         else:
-            logger.info(f"Loaded {len(self.connections)} Argo CD connection(s)")
+            logger.info("Loaded %s Argo CD connection(s)", len(self.connections))
 
-        # Run the FastMCP server (defaults to stdio transport)
         self.mcp.run()
 
 
-def main():
-    """Main entry point for the MCP server"""
+def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="MCP Read-Only Argo CD Server - Secure read-only access to Argo CD instances using browser session cookies"
+        description=(
+            "MCP Read-Only Argo CD Server - Secure read-only access to Argo CD "
+            "instances using browser session cookies"
+        )
     )
     parser.add_argument(
-        "config",
-        nargs="?",
-        default="connections.yaml",
-        help="Path to connections.yaml configuration file (default: connections.yaml)",
+        "--config-dir",
+        help="Directory containing connections.yaml and secrets.env",
     )
+    parser.add_argument(
+        "--state-dir",
+        help="Directory containing state.env",
+    )
+    parser.add_argument(
+        "--cache-dir",
+        help="Directory reserved for cache files",
+    )
+    parser.add_argument(
+        "--print-paths",
+        action="store_true",
+        help="Print resolved config/state/cache paths and exit",
+    )
+    return parser
 
+
+def main() -> None:
+    parser = build_arg_parser()
     args = parser.parse_args()
 
-    # Create and run server
-    server = ReadOnlyArgoCDServer(config_path=args.config)
+    runtime_paths = resolve_runtime_paths(
+        config_dir=args.config_dir,
+        state_dir=args.state_dir,
+        cache_dir=args.cache_dir,
+    )
+
+    if args.print_paths:
+        print(runtime_paths.render())
+        return
+
+    runtime_paths.ensure_directories()
+
+    server = ReadOnlyArgoCDServer(runtime_paths=runtime_paths)
 
     try:
         server.run()
     except KeyboardInterrupt:
         logger.info("Server shutting down...")
-    except Exception as e:
-        logger.error(f"Server error: {e}")
+    except Exception as exc:
+        logger.error("Server error: %s", exc)
         sys.exit(1)
 
 

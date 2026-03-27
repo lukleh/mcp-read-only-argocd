@@ -8,6 +8,7 @@ Run this to verify your session tokens are working before using the MCP server.
 Usage:
     python smoke_test.py
     python smoke_test.py --connection staging
+    python smoke_test.py --print-paths
 """
 
 import argparse
@@ -20,6 +21,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from src.config import ConfigParser
 from src.argocd_connector import ArgoCDConnector
+from src.runtime_paths import resolve_runtime_paths
 
 
 async def test_connection(connector: ArgoCDConnector, connection_name: str) -> bool:
@@ -244,20 +246,41 @@ async def test_connection(connector: ArgoCDConnector, connection_name: str) -> b
     return success
 
 
-async def main(connection_filter: str | None = None):
+async def main(
+    connection_filter: str | None = None,
+    config_dir: str | None = None,
+    state_dir: str | None = None,
+    cache_dir: str | None = None,
+    print_paths: bool = False,
+):
     """Run smoke tests for all configured connections."""
     print("MCP Read-Only Argo CD - Smoke Test")
     print("=" * 60)
 
-    # Load configuration
-    config_path = Path(__file__).parent / "connections.yaml"
-    if not config_path.exists():
-        print(f"\n✗ Configuration file not found: {config_path}")
-        print("  Please create connections.yaml from connections.yaml.sample")
+    runtime_paths = resolve_runtime_paths(
+        config_dir=config_dir,
+        state_dir=state_dir,
+        cache_dir=cache_dir,
+    )
+
+    if print_paths:
+        print(runtime_paths.render())
+        return True
+
+    if not runtime_paths.connections_file.exists():
+        print(f"\n✗ Configuration file not found: {runtime_paths.connections_file}")
+        print(
+            "  Please create ~/.config/lukleh/mcp-read-only-argocd/connections.yaml "
+            "from connections.yaml.sample"
+        )
         return False
 
     try:
-        parser = ConfigParser(str(config_path))
+        parser = ConfigParser(
+            runtime_paths.connections_file,
+            secrets_path=runtime_paths.secrets_file,
+            state_path=runtime_paths.state_file,
+        )
         connections = parser.load_config()
     except Exception as e:
         print(f"\n✗ Failed to load configuration: {e}")
@@ -307,7 +330,32 @@ if __name__ == "__main__":
         help="Test only this connection (by name)",
         default=None,
     )
+    arg_parser.add_argument(
+        "--config-dir",
+        help="Directory containing connections.yaml and secrets.env",
+    )
+    arg_parser.add_argument(
+        "--state-dir",
+        help="Directory containing state.env",
+    )
+    arg_parser.add_argument(
+        "--cache-dir",
+        help="Directory reserved for cache files",
+    )
+    arg_parser.add_argument(
+        "--print-paths",
+        action="store_true",
+        help="Print resolved config/state/cache paths and exit",
+    )
     args = arg_parser.parse_args()
 
-    success = asyncio.run(main(args.connection))
+    success = asyncio.run(
+        main(
+            args.connection,
+            config_dir=args.config_dir,
+            state_dir=args.state_dir,
+            cache_dir=args.cache_dir,
+            print_paths=args.print_paths,
+        )
+    )
     sys.exit(0 if success else 1)

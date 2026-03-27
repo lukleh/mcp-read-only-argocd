@@ -4,6 +4,11 @@
 
 A secure MCP (Model Context Protocol) server that provides **read-only** access to Argo CD instances using browser session cookies.
 
+> Default layout:
+> - Config: `~/.config/lukleh/mcp-read-only-argocd/connections.yaml`
+> - Secrets: `~/.config/lukleh/mcp-read-only-argocd/secrets.env`
+> - Rotated session state: `~/.local/state/lukleh/mcp-read-only-argocd/state.env`
+
 ## Features
 
 - **Read-only by design** - Only read operations are exposed; no mutations of Argo CD resources
@@ -39,13 +44,20 @@ uv pip install -e .
 
 ### 2. Configure Argo CD Connections
 
+Create the config and state directories:
+
+```bash
+mkdir -p ~/.config/lukleh/mcp-read-only-argocd
+mkdir -p ~/.local/state/lukleh/mcp-read-only-argocd
+```
+
 Copy the sample configuration:
 
 ```bash
-cp connections.yaml.sample connections.yaml
+cp connections.yaml.sample ~/.config/lukleh/mcp-read-only-argocd/connections.yaml
 ```
 
-Edit `connections.yaml` with your Argo CD instances:
+Edit `~/.config/lukleh/mcp-read-only-argocd/connections.yaml` with your Argo CD instances:
 
 ```yaml
 - connection_name: staging
@@ -55,10 +67,10 @@ Edit `connections.yaml` with your Argo CD instances:
 
 ### 3. Set Up Authentication
 
-Create a `.env` file from the sample:
+Copy the secrets sample:
 
 ```bash
-cp .env.example .env
+cp secrets.env.example ~/.config/lukleh/mcp-read-only-argocd/secrets.env
 ```
 
 Set your browser session cookie (auto‑rotated while valid):
@@ -73,7 +85,9 @@ ARGOCD_SESSION_STAGING=your_session_token_here
 2. Open Developer Tools
 3. Go to Application/Storage → Cookies
 4. Copy the value of the `argocd.token` cookie
-5. Paste it into `.env` as shown above
+5. Paste it into `secrets.env` as shown above
+
+The server writes refreshed cookies to `~/.local/state/lukleh/mcp-read-only-argocd/state.env` automatically. You do not need to create that file yourself.
 
 ### 4. Validate and Test Connections
 
@@ -83,6 +97,9 @@ uv run python smoke_test.py
 
 # Test a specific connection
 uv run python smoke_test.py --connection staging
+
+# Show the exact paths the helper will use
+uv run python smoke_test.py --print-paths
 ```
 
 ### 5. Run the Server
@@ -96,10 +113,10 @@ uv run python -m src.server
 mcp-read-only-argocd
 ```
 
-You can also pass a custom config path:
+You can also point the server at another config directory:
 
 ```bash
-uv run python -m src.server /path/to/connections.yaml
+uv run python -m src.server --config-dir /path/to/config-dir
 ```
 
 ### 6. Add MCP to Your AI Assistant

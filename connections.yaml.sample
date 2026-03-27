@@ -1,5 +1,5 @@
 # MCP Read-Only Argo CD Server - Connection Configuration Sample
-# Copy this file to connections.yaml and customize for your Argo CD instances
+# Copy this file to ~/.config/lukleh/mcp-read-only-argocd/connections.yaml
 
 # Staging Argo CD instance
 - connection_name: staging
@@ -35,4 +35,4 @@
 #
 # - Connection names should use only letters, numbers, underscores, and hyphens
 # - URLs should not include trailing slashes
-# - Credentials are reloaded from .env before each request to support token rotation
+# - Credentials are reloaded from secrets.env/state.env before each request to support token rotation

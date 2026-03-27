@@ -22,7 +22,7 @@ class ArgoCDConnector:
         Set ARGOCD_SESSION_<CONNECTION_NAME> environment variable with
         the cookie value from your browser.
 
-    Credentials are reloaded from .env before each request to support
+    Credentials are reloaded from secrets.env/state.env before each request to support
     token rotation without server restart.
     """
 
@@ -43,7 +43,7 @@ class ArgoCDConnector:
         await self.client.aclose()
 
     def _refresh_credentials(self) -> None:
-        """Refresh credentials from .env before making a request."""
+        """Refresh credentials from secrets.env/state.env before making a request."""
         session_token = self.connection.reload_session_token()
         self.client.cookies.set("argocd.token", session_token)
 
@@ -175,7 +175,7 @@ class ArgoCDConnector:
                                 f"New: {new_token[:16]}..."
                             )
 
-                            # Update in memory and persist to .env
+                            # Update in memory and persist to state.env
                             self.connection.update_session_token(
                                 new_token, persist=True
                             )
