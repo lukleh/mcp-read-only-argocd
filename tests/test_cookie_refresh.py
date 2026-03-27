@@ -105,3 +105,14 @@ def test_multiple_set_cookie_headers_only_argocd_token_used():
     connector._check_and_update_session_cookie(mock_response)
 
     assert connector.connection.session_token == "new_token_789"
+
+
+def test_direct_connection_reload_uses_runtime_environment(monkeypatch):
+    monkeypatch.setenv("ARGOCD_SESSION_TEST", "runtime-session")
+
+    conn = ArgoCDConnection(
+        connection_name="test",
+        url="https://argocd.example.com",
+    )
+
+    assert conn.reload_session_token() == "runtime-session"
