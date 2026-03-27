@@ -6,8 +6,8 @@ A secure MCP (Model Context Protocol) server that provides **read-only** access 
 
 > Default layout:
 > - Config: `~/.config/lukleh/mcp-read-only-argocd/connections.yaml`
-> - Secrets: `~/.config/lukleh/mcp-read-only-argocd/secrets.env`
-> - Rotated session state: `~/.local/state/lukleh/mcp-read-only-argocd/state.env`
+> - Credentials: injected via the MCP client or shell environment
+> - Rotated session state: `~/.local/state/lukleh/mcp-read-only-argocd/session_tokens.json`
 
 ## Features
 
@@ -67,16 +67,12 @@ Edit `~/.config/lukleh/mcp-read-only-argocd/connections.yaml` with your Argo CD 
 
 ### 3. Set Up Authentication
 
-Copy the secrets sample:
+Set your browser session cookie in the environment used to launch the server
+(for example, export it in your shell for local testing or inject it via your
+MCP client config):
 
 ```bash
-cp secrets.env.example ~/.config/lukleh/mcp-read-only-argocd/secrets.env
-```
-
-Set your browser session cookie (auto‑rotated while valid):
-
-```bash
-ARGOCD_SESSION_STAGING=your_session_token_here
+export ARGOCD_SESSION_STAGING=your_session_token_here
 ```
 
 #### How to Get Your `argocd.token` Session Cookie
@@ -85,9 +81,9 @@ ARGOCD_SESSION_STAGING=your_session_token_here
 2. Open Developer Tools
 3. Go to Application/Storage → Cookies
 4. Copy the value of the `argocd.token` cookie
-5. Paste it into `secrets.env` as shown above
+5. Export or inject it as `ARGOCD_SESSION_<CONNECTION_NAME>`
 
-The server writes refreshed cookies to `~/.local/state/lukleh/mcp-read-only-argocd/state.env` automatically. You do not need to create that file yourself.
+The server writes refreshed cookies to `~/.local/state/lukleh/mcp-read-only-argocd/session_tokens.json` automatically. You do not need to create that file yourself.
 
 ### 4. Validate and Test Connections
 
@@ -132,6 +128,8 @@ codex mcp add mcp-read-only-argocd -- uv --directory {PATH_TO_MCP_READ_ONLY_ARGO
 ```
 
 Replace `{PATH_TO_MCP_READ_ONLY_ARGOCD}` with the absolute path where you cloned this repo (e.g., `/Users/yourname/projects/mcp-read-only-argocd`).
+Also configure one `ARGOCD_SESSION_<CONNECTION_NAME>` environment variable per
+connection in the same MCP entry.
 
 ## MCP Tools
 
