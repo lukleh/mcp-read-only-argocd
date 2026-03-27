@@ -1,11 +1,11 @@
 import os
 import tempfile
+import json
 from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any
 
 import yaml
-from dotenv import dotenv_values
 from pydantic import BaseModel, Field, HttpUrl, PrivateAttr, field_validator
 
 
@@ -13,55 +13,48 @@ def _copy_runtime_env() -> dict[str, str]:
     return dict(os.environ)
 
 
-def _read_env_file(env_path: Path | None) -> dict[str, str]:
-    if env_path is None or not env_path.exists():
+def _read_state_file(state_path: Path | None) -> dict[str, str]:
+    if state_path is None or not state_path.exists():
         return {}
+
+    raw_data = json.loads(state_path.read_text(encoding="utf-8"))
+    if not isinstance(raw_data, dict):
+        raise ValueError(f"State file must contain a JSON object: {state_path}")
+
     return {
         key: value
-        for key, value in dotenv_values(env_path).items()
-        if key and value is not None
+        for key, value in raw_data.items()
+        if isinstance(key, str) and isinstance(value, str)
     }
 
 
 def _merge_credential_sources(
-    secrets_path: Path | None,
     state_path: Path | None,
     runtime_env: Mapping[str, str] | None,
 ) -> dict[str, str]:
-    merged = _read_env_file(secrets_path)
-    merged.update(_read_env_file(state_path))
+    merged: dict[str, str] = {}
     if runtime_env:
         merged.update(runtime_env)
+    merged.update(_read_state_file(state_path))
     return merged
 
 
-def _persist_env_value(env_path: Path, env_var_name: str, new_value: str) -> None:
-    env_path.parent.mkdir(parents=True, exist_ok=True)
+def _persist_state_value(state_path: Path, key: str, new_value: str) -> None:
+    state_path.parent.mkdir(parents=True, exist_ok=True)
 
-    if env_path.exists():
-        lines = env_path.read_text(encoding="utf-8").splitlines()
-    else:
-        lines = []
-
-    updated = False
-    for index, line in enumerate(lines):
-        if line.startswith(f"{env_var_name}="):
-            lines[index] = f"{env_var_name}={new_value}"
-            updated = True
-            break
-
-    if not updated:
-        lines.append(f"{env_var_name}={new_value}")
+    current_values = _read_state_file(state_path) if state_path.exists() else {}
+    current_values[key] = new_value
 
     temp_fd, temp_path = tempfile.mkstemp(
-        dir=env_path.parent,
-        prefix=f".{env_path.name}_",
+        dir=state_path.parent,
+        prefix=f".{state_path.name}_",
         suffix=".tmp",
     )
     try:
         with os.fdopen(temp_fd, "w", encoding="utf-8") as handle:
-            handle.write("\n".join(lines) + "\n")
-        os.replace(temp_path, env_path)
+            json.dump(current_values, handle, indent=2, sort_keys=True)
+            handle.write("\n")
+        os.replace(temp_path, state_path)
     except Exception:
         try:
             os.unlink(temp_path)
@@ -84,7 +77,6 @@ class ArgoCDConnection(BaseModel):
         None, description="Argo CD session token (argocd.token cookie)"
     )
 
-    _secrets_path: Path | None = PrivateAttr(default=None)
     _state_path: Path | None = PrivateAttr(default=None)
     _runtime_env_provider: Callable[[], Mapping[str, str]] = PrivateAttr(
         default_factory=lambda: _copy_runtime_env
@@ -108,11 +100,9 @@ class ArgoCDConnection(BaseModel):
 
     def configure_credential_sources(
         self,
-        secrets_path: Path | None,
         state_path: Path | None,
         runtime_env_provider: Callable[[], Mapping[str, str]] | None = None,
     ) -> None:
-        self._secrets_path = secrets_path
         self._state_path = state_path
         if runtime_env_provider is not None:
             self._runtime_env_provider = runtime_env_provider
@@ -126,36 +116,35 @@ class ArgoCDConnection(BaseModel):
 
     def _load_credential_values(self) -> dict[str, str]:
         return _merge_credential_sources(
-            self._secrets_path,
             self._state_path,
             self._runtime_env_provider(),
         )
 
     def reload_session_token(self) -> str:
-        """Reload session token from secrets/state files and runtime environment."""
+        """Reload session token from runtime environment and cached state."""
         env_var_name = self.get_env_var_name()
         session_token = self._load_credential_values().get(env_var_name)
 
         if not session_token:
             raise ValueError(
                 f"Missing session token for connection '{self.connection_name}'. "
-                f"Please set {env_var_name} in secrets.env, state.env, or the environment."
+                f"Please set {env_var_name} in the environment."
             )
 
         self.session_token = session_token
         return session_token
 
     def update_session_token(self, new_token: str, persist: bool = True) -> None:
-        """Update session token in memory and optionally persist to state.env."""
+        """Update session token in memory and optionally persist to cached state."""
         self.session_token = new_token
         if persist:
             self._persist_token_to_state(new_token)
 
     def _persist_token_to_state(self, new_token: str) -> None:
-        env_path = self._state_path
-        if env_path is None:
+        state_path = self._state_path
+        if state_path is None:
             return
-        _persist_env_value(env_path, self.get_env_var_name(), new_token)
+        _persist_state_value(state_path, self.get_env_var_name(), new_token)
 
 
 class ConfigParser:
@@ -165,12 +154,10 @@ class ConfigParser:
         self,
         config_path: str | Path,
         *,
-        secrets_path: str | Path | None = None,
         state_path: str | Path | None = None,
         runtime_env_provider: Callable[[], Mapping[str, str]] | None = None,
     ):
         self.config_path = Path(config_path).expanduser()
-        self.secrets_path = Path(secrets_path).expanduser() if secrets_path else None
         self.state_path = Path(state_path).expanduser() if state_path else None
         self.runtime_env_provider = runtime_env_provider or _copy_runtime_env
 
@@ -188,7 +175,6 @@ class ConfigParser:
         """Process a single connection configuration."""
         connection = ArgoCDConnection(**conn_data)
         connection.configure_credential_sources(
-            self.secrets_path,
             self.state_path,
             self.runtime_env_provider,
         )
@@ -201,7 +187,7 @@ class ConfigParser:
         if not session_token:
             raise ValueError(
                 f"Missing session token for connection '{connection.connection_name}'. "
-                f"Please set {connection.get_env_var_name()} in secrets.env, state.env, or the environment."
+                f"Please set {connection.get_env_var_name()} in the environment."
             )
 
         timeout_override = env_values.get(connection.get_timeout_env_var_name())

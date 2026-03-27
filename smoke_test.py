@@ -278,7 +278,6 @@ async def main(
     try:
         parser = ConfigParser(
             runtime_paths.connections_file,
-            secrets_path=runtime_paths.secrets_file,
             state_path=runtime_paths.state_file,
         )
         connections = parser.load_config()
@@ -332,11 +331,11 @@ if __name__ == "__main__":
     )
     arg_parser.add_argument(
         "--config-dir",
-        help="Directory containing connections.yaml and secrets.env",
+        help="Directory containing connections.yaml",
     )
     arg_parser.add_argument(
         "--state-dir",
-        help="Directory containing state.env",
+        help="Directory containing session_tokens.json",
     )
     arg_parser.add_argument(
         "--cache-dir",
