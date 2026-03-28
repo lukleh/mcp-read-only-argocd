@@ -83,7 +83,7 @@ export ARGOCD_SESSION_STAGING=your_session_token_here
 4. Copy the value of the `argocd.token` cookie
 5. Export or inject it as `ARGOCD_SESSION_<CONNECTION_NAME>`
 
-The server writes refreshed cookies to `~/.local/state/lukleh/mcp-read-only-argocd/session_tokens.json` automatically. You do not need to create that file yourself.
+The server writes refreshed cookies to `~/.local/state/lukleh/mcp-read-only-argocd/session_tokens.json` automatically. You do not need to create that file yourself. On subsequent requests, the persisted state file takes precedence over the live `ARGOCD_SESSION_*` environment value; clear or update the state file if you need to force a fresh token.
 
 ### 4. Validate and Test Connections
 

@@ -42,6 +42,11 @@ class ArgoCDConnector:
         """Close the HTTP client"""
         await self.client.aclose()
 
+    @staticmethod
+    def _quote_path_segment(value: str) -> str:
+        """Encode user-controlled values that become path segments."""
+        return quote(value, safe="")
+
     def _refresh_credentials(self) -> None:
         """Refresh credentials from the environment and cached session state."""
         session_token = self.connection.reload_session_token()
@@ -130,6 +135,14 @@ class ArgoCDConnector:
                 self.connection.connection_name,
             )
 
+    def _handle_request_error(self, e: httpx.RequestError) -> NoReturn:
+        """Convert transport-level request errors into the project exception model."""
+        raise ArgoCDAPIError(
+            0,
+            f"Request error: {e}",
+            self.connection.connection_name,
+        )
+
     async def _get(self, endpoint: str, **params) -> Dict[str, Any]:
         """Execute a GET request to Argo CD API."""
         self._refresh_credentials()
@@ -143,6 +156,8 @@ class ArgoCDConnector:
             raise ArgoCDTimeoutError(
                 self.connection.timeout, self.connection.connection_name
             )
+        except httpx.RequestError as e:
+            self._handle_request_error(e)
 
     def _check_and_update_session_cookie(self, response: httpx.Response) -> None:
         """
@@ -170,9 +185,8 @@ class ArgoCDConnector:
                         # Only update if it's different from current token
                         if new_token != self.connection.session_token:
                             logger.info(
-                                f"Session token rotated for {self.connection.connection_name}. "
-                                f"Old: {self.connection.session_token[:16]}... "
-                                f"New: {new_token[:16]}..."
+                                "Session token rotated for %s",
+                                self.connection.connection_name,
                             )
 
                             # Update in memory and persist to cached state
@@ -219,7 +233,8 @@ class ArgoCDConnector:
         Returns:
             Application object with full details
         """
-        return await self._get(f"/applications/{name}")
+        encoded_name = self._quote_path_segment(name)
+        return await self._get(f"/applications/{encoded_name}")
 
     async def get_application_resource_tree(self, name: str) -> Dict[str, Any]:
         """Get the resource tree for an application.
@@ -230,7 +245,8 @@ class ArgoCDConnector:
         Returns:
             Resource tree with all Kubernetes resources
         """
-        return await self._get(f"/applications/{name}/resource-tree")
+        encoded_name = self._quote_path_segment(name)
+        return await self._get(f"/applications/{encoded_name}/resource-tree")
 
     async def get_application_managed_resources(
         self,
@@ -262,7 +278,10 @@ class ArgoCDConnector:
         if resource_name:
             params["name"] = resource_name
 
-        return await self._get(f"/applications/{name}/managed-resources", **params)
+        encoded_name = self._quote_path_segment(name)
+        return await self._get(
+            f"/applications/{encoded_name}/managed-resources", **params
+        )
 
     async def get_application_logs(
         self,
@@ -293,12 +312,13 @@ class ArgoCDConnector:
             params["podName"] = pod_name
         if container:
             params["container"] = container
-        if tail_lines:
+        if tail_lines is not None:
             params["tailLines"] = tail_lines
-        if since_seconds:
+        if since_seconds is not None:
             params["sinceSeconds"] = since_seconds
 
-        return await self._get(f"/applications/{name}/logs", **params)
+        encoded_name = self._quote_path_segment(name)
+        return await self._get(f"/applications/{encoded_name}/logs", **params)
 
     # ==================== Projects API ====================
 
@@ -320,7 +340,8 @@ class ArgoCDConnector:
         Returns:
             Project object with full details
         """
-        return await self._get(f"/projects/{name}")
+        encoded_name = self._quote_path_segment(name)
+        return await self._get(f"/projects/{encoded_name}")
 
     # ==================== Clusters API ====================
 
@@ -396,3 +417,5 @@ class ArgoCDConnector:
             raise ArgoCDTimeoutError(
                 self.connection.timeout, self.connection.connection_name
             )
+        except httpx.RequestError as e:
+            self._handle_request_error(e)
