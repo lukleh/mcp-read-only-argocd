@@ -4,6 +4,11 @@
 
 A secure MCP (Model Context Protocol) server that provides **read-only** access to Argo CD instances using browser session cookies.
 
+> Default layout:
+> - Config: `~/.config/lukleh/mcp-read-only-argocd/connections.yaml`
+> - Credentials: injected via the MCP client or shell environment
+> - Rotated session state: `~/.local/state/lukleh/mcp-read-only-argocd/session_tokens.json`
+
 ## Features
 
 - **Read-only by design** - Only read operations are exposed; no mutations of Argo CD resources
@@ -39,13 +44,20 @@ uv pip install -e .
 
 ### 2. Configure Argo CD Connections
 
+Create the config and state directories:
+
+```bash
+mkdir -p ~/.config/lukleh/mcp-read-only-argocd
+mkdir -p ~/.local/state/lukleh/mcp-read-only-argocd
+```
+
 Copy the sample configuration:
 
 ```bash
-cp connections.yaml.sample connections.yaml
+cp connections.yaml.sample ~/.config/lukleh/mcp-read-only-argocd/connections.yaml
 ```
 
-Edit `connections.yaml` with your Argo CD instances:
+Edit `~/.config/lukleh/mcp-read-only-argocd/connections.yaml` with your Argo CD instances:
 
 ```yaml
 - connection_name: staging
@@ -55,16 +67,12 @@ Edit `connections.yaml` with your Argo CD instances:
 
 ### 3. Set Up Authentication
 
-Create a `.env` file from the sample:
+Set your browser session cookie in the environment used to launch the server
+(for example, export it in your shell for local testing or inject it via your
+MCP client config):
 
 ```bash
-cp .env.example .env
-```
-
-Set your browser session cookie (auto‑rotated while valid):
-
-```bash
-ARGOCD_SESSION_STAGING=your_session_token_here
+export ARGOCD_SESSION_STAGING=your_session_token_here
 ```
 
 #### How to Get Your `argocd.token` Session Cookie
@@ -73,7 +81,9 @@ ARGOCD_SESSION_STAGING=your_session_token_here
 2. Open Developer Tools
 3. Go to Application/Storage → Cookies
 4. Copy the value of the `argocd.token` cookie
-5. Paste it into `.env` as shown above
+5. Export or inject it as `ARGOCD_SESSION_<CONNECTION_NAME>`
+
+The server writes refreshed cookies to `~/.local/state/lukleh/mcp-read-only-argocd/session_tokens.json` automatically. You do not need to create that file yourself.
 
 ### 4. Validate and Test Connections
 
@@ -83,6 +93,9 @@ uv run python smoke_test.py
 
 # Test a specific connection
 uv run python smoke_test.py --connection staging
+
+# Show the exact paths the helper will use
+uv run python smoke_test.py --print-paths
 ```
 
 ### 5. Run the Server
@@ -96,10 +109,10 @@ uv run python -m src.server
 mcp-read-only-argocd
 ```
 
-You can also pass a custom config path:
+You can also point the server at another config directory:
 
 ```bash
-uv run python -m src.server /path/to/connections.yaml
+uv run python -m src.server --config-dir /path/to/config-dir
 ```
 
 ### 6. Add MCP to Your AI Assistant
@@ -115,6 +128,8 @@ codex mcp add mcp-read-only-argocd -- uv --directory {PATH_TO_MCP_READ_ONLY_ARGO
 ```
 
 Replace `{PATH_TO_MCP_READ_ONLY_ARGOCD}` with the absolute path where you cloned this repo (e.g., `/Users/yourname/projects/mcp-read-only-argocd`).
+Also configure one `ARGOCD_SESSION_<CONNECTION_NAME>` environment variable per
+connection in the same MCP entry.
 
 ## MCP Tools
 

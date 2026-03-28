@@ -45,12 +45,12 @@ uv run pytest
 - `ArgoCDConnection` (Pydantic model): Validates connection settings
 - `ConfigParser`: Loads connections from YAML and environment variables
 - Session token pattern: `ARGOCD_SESSION_<CONNECTION_NAME>` (uppercase, hyphens→underscores)
-- **Dynamic token reloading**: `reload_session_token()` reloads .env on every call
+- **Dynamic token reloading**: `reload_session_token()` reloads the runtime environment and persisted session cache on every call
 
 **src/argocd_connector.py** - Argo CD API client
 - `ArgoCDConnector` wraps httpx for Argo CD API calls
 - **Critical**: `_get()` calls `_refresh_credentials()` before EVERY request
-- This allows updating session tokens in .env without restarting the server
+- This allows updating injected session tokens without restarting the server
 - Automatic cookie rotation: captures refreshed `argocd.token` from response headers
 
 **src/exceptions.py** - Custom exception hierarchy
@@ -79,7 +79,7 @@ Each module exports a `register_*_tools(mcp, connectors)` function.
 1. `ConfigParser.load_config()` reads `connections.yaml`
 2. For each connection, `_process_connection()` creates an `ArgoCDConnection`
 3. Session tokens are loaded from environment variables at startup
-4. On each API request, `reload_session_token()` re-reads .env to get fresh tokens
+4. On each API request, `reload_session_token()` re-reads the runtime environment and persisted session cache to get fresh tokens
 
 ### Error Handling Pattern
 
@@ -96,15 +96,15 @@ Tool functions use `get_connector()` for validation instead of manual checks.
 ### Authentication
 
 Session-based authentication using Argo CD browser cookies:
-- Tokens stored in .env file (never in code or YAML)
-- Tokens are reloaded from .env before each request to support token rotation
+- Tokens are injected via environment variables (never in code or YAML)
+- Tokens are reloaded from the runtime environment before each request to support token rotation
 - Automatic capture and persistence of rotated tokens from Set-Cookie headers
 - Connection name in YAML maps to `ARGOCD_SESSION_<NAME>` in environment
 
 ## Key Design Decisions
 
 1. **Read-only by design**: Only GET requests are performed
-2. **Session token reload**: Tokens are reloaded from .env on every request to handle expiration gracefully
+2. **Session token reload**: Tokens are reloaded from the runtime environment on every request to handle expiration gracefully
 3. **No credential storage**: Tokens only in environment variables, never in config files
 4. **Multiple instance support**: Each connection has its own connector with independent configuration
 5. **MCP error handling**: Let exceptions propagate; framework handles them properly
