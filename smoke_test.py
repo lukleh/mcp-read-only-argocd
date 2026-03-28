@@ -14,14 +14,10 @@ Usage:
 import argparse
 import asyncio
 import sys
-from pathlib import Path
 
-# Add src to path for local development
-sys.path.insert(0, str(Path(__file__).parent))
-
-from src.config import ConfigParser
-from src.argocd_connector import ArgoCDConnector
-from src.runtime_paths import resolve_runtime_paths
+from mcp_read_only_argocd.argocd_connector import ArgoCDConnector
+from mcp_read_only_argocd.config import ConfigParser
+from mcp_read_only_argocd.runtime_paths import resolve_runtime_paths
 
 
 async def test_connection(connector: ArgoCDConnector, connection_name: str) -> bool:
@@ -102,9 +98,7 @@ async def test_connection(connector: ArgoCDConnector, connection_name: str) -> b
     else:
         try:
             tree = await connector.get_application_resource_tree(app_name)
-            node_count = (
-                len(tree.get("nodes", [])) if isinstance(tree, dict) else None
-            )
+            node_count = len(tree.get("nodes", [])) if isinstance(tree, dict) else None
             if node_count is not None:
                 print(f"  ✓ Nodes: {node_count}")
             else:
@@ -155,7 +149,9 @@ async def test_connection(connector: ArgoCDConnector, connection_name: str) -> b
         projects = await connector.list_projects()
         print(f"  ✓ Found {len(projects)} project(s)")
         if projects:
-            project_names = [p.get("metadata", {}).get("name", "?") for p in projects[:3]]
+            project_names = [
+                p.get("metadata", {}).get("name", "?") for p in projects[:3]
+            ]
             print(f"  ✓ Sample projects: {', '.join(project_names)}")
     except Exception as e:
         print(f"  ✗ Failed: {e}")
@@ -270,8 +266,9 @@ async def main(
     if not runtime_paths.connections_file.exists():
         print(f"\n✗ Configuration file not found: {runtime_paths.connections_file}")
         print(
-            "  Please create ~/.config/lukleh/mcp-read-only-argocd/connections.yaml "
-            "from connections.yaml.sample"
+            "  Run `uvx mcp-read-only-argocd --write-sample-config` or create "
+            "~/.config/lukleh/mcp-read-only-argocd/connections.yaml from "
+            "connections.yaml.sample"
         )
         return False
 
@@ -325,7 +322,8 @@ if __name__ == "__main__":
         description="Smoke test for mcp-read-only-argocd"
     )
     arg_parser.add_argument(
-        "--connection", "-c",
+        "--connection",
+        "-c",
         help="Test only this connection (by name)",
         default=None,
     )

@@ -4,16 +4,33 @@ version = "0.1.0"
 description = "MCP server for read-only access to Argo CD instances using browser session cookies"
 readme = "README.md"
 requires-python = ">=3.11"
+keywords = ["argocd", "mcp", "mcp-server", "read-only", "kubernetes"]
 authors = [
     {name = "Lukas Lehner", email = "lehner.lukas@gmail.com"}
 ]
 license = {text = "MIT"}
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
 dependencies = [
     "mcp>=1.0.0",
     "pyyaml>=6.0",
     "httpx>=0.24.0",
     "pydantic>=2.0.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/lukleh/mcp-read-only-argocd"
+Repository = "https://github.com/lukleh/mcp-read-only-argocd"
+Issues = "https://github.com/lukleh/mcp-read-only-argocd/issues"
+Changelog = "https://github.com/lukleh/mcp-read-only-argocd/releases"
 
 [project.optional-dependencies]
 dev = [
@@ -29,10 +46,10 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project.scripts]
-mcp-read-only-argocd = "src.server:main"
+mcp-read-only-argocd = "mcp_read_only_argocd.server:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src"]
+packages = ["mcp_read_only_argocd"]
 
 [dependency-groups]
 dev = [

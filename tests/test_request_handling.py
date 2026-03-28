@@ -3,9 +3,9 @@
 import httpx
 import pytest
 
-from src.argocd_connector import ArgoCDConnector
-from src.config import ArgoCDConnection
-from src.exceptions import ArgoCDAPIError
+from mcp_read_only_argocd.argocd_connector import ArgoCDConnector
+from mcp_read_only_argocd.config import ArgoCDConnection
+from mcp_read_only_argocd.exceptions import ArgoCDAPIError
 
 
 def create_mock_connector(connection, handler):

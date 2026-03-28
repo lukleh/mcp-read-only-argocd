@@ -1,175 +1,220 @@
 # MCP Read-Only Argo CD Server
 
 [![Tests](https://github.com/lukleh/mcp-read-only-argocd/actions/workflows/test.yml/badge.svg)](https://github.com/lukleh/mcp-read-only-argocd/actions/workflows/test.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 
-A secure MCP (Model Context Protocol) server that provides **read-only** access to Argo CD instances using browser session cookies.
+A secure MCP (Model Context Protocol) server that provides read-only access to Argo CD instances using browser session cookies.
 
 > Default layout:
 > - Config: `~/.config/lukleh/mcp-read-only-argocd/connections.yaml`
 > - Credentials: injected via the MCP client or shell environment
-> - Rotated session state: `~/.local/state/lukleh/mcp-read-only-argocd/session_tokens.json`
+> - State: `~/.local/state/lukleh/mcp-read-only-argocd/session_tokens.json`
+> - Cache: `~/.cache/lukleh/mcp-read-only-argocd/`
 
 ## Features
 
-- **Read-only by design** - Only read operations are exposed; no mutations of Argo CD resources
-- **Session cookie authentication** - Uses your browser `argocd.token` cookie (default)
-- **Multi‑instance support** - Connect to multiple Argo CD instances simultaneously
-- **Automatic cookie rotation** - Captures refreshed `argocd.token` values from response headers while the session is still valid
+- Read-only by design: only read operations are exposed
+- Session cookie authentication: uses your existing `argocd.token` browser session
+- Multi-instance support: connect to multiple Argo CD instances at once
+- Automatic cookie rotation: refreshed session cookies are persisted to local state
+- Package-native runtime paths: no repository checkout required for normal use
 
 ## Why Session Cookies?
 
-Unlike the official `mcp-for-argocd` which requires generating API tokens, this server can use your existing browser session. This means:
+Unlike token-based setups, this server can reuse your existing browser session:
 
-- No need to generate and manage API tokens
-- Uses your existing SSO/LDAP/OIDC authentication
-- Same permissions as your browser session
+- no extra API token management
+- uses your existing SSO/OIDC login
+- matches the permissions you already have in the UI
 
 ## Prerequisites
 
-- [uv](https://github.com/astral-sh/uv) - Fast Python package installer and resolver
+- Python 3.11 or higher
+- [uv](https://github.com/astral-sh/uv)
+- an Argo CD browser session cookie
+- an MCP client such as Claude Code or Codex
 
 ## Quick Start
 
-### 1. Install Dependencies
+### 1. Install the Server
 
 ```bash
-uv sync
+# Run the published package without cloning the repository
+uvx mcp-read-only-argocd --write-sample-config
+
+# Or install it once and reuse the command directly
+uv tool install mcp-read-only-argocd
+mcp-read-only-argocd --write-sample-config
 ```
 
-Alternatively, install editable:
+The command above writes a starter config to `~/.config/lukleh/mcp-read-only-argocd/connections.yaml`.
+
+### 2. Confirm Runtime Paths
 
 ```bash
-uv pip install -e .
+uvx mcp-read-only-argocd --print-paths
 ```
 
-### 2. Configure Argo CD Connections
+### 3. Edit the Connections File
 
-Create the config and state directories:
-
-```bash
-mkdir -p ~/.config/lukleh/mcp-read-only-argocd
-mkdir -p ~/.local/state/lukleh/mcp-read-only-argocd
-```
-
-Copy the sample configuration:
-
-```bash
-cp connections.yaml.sample ~/.config/lukleh/mcp-read-only-argocd/connections.yaml
-```
-
-Edit `~/.config/lukleh/mcp-read-only-argocd/connections.yaml` with your Argo CD instances:
+Edit `~/.config/lukleh/mcp-read-only-argocd/connections.yaml`:
 
 ```yaml
 - connection_name: staging
   url: https://argocd.example.com
   description: Staging Argo CD
+
+- connection_name: production
+  url: https://argocd-prod.example.com
+  description: Production Argo CD
 ```
 
-### 3. Set Up Authentication
+### 4. Get Your `argocd.token` Session Cookie
 
-Set your browser session cookie in the environment used to launch the server
-(for example, export it in your shell for local testing or inject it via your
-MCP client config):
-
-```bash
-export ARGOCD_SESSION_STAGING=your_session_token_here
-```
-
-#### How to Get Your `argocd.token` Session Cookie
-
-1. Log into your Argo CD web UI
-2. Open Developer Tools
-3. Go to Application/Storage → Cookies
+1. Log in to your Argo CD web UI
+2. Open browser developer tools
+3. Go to Application/Storage -> Cookies
 4. Copy the value of the `argocd.token` cookie
-5. Export or inject it as `ARGOCD_SESSION_<CONNECTION_NAME>`
 
-The server writes refreshed cookies to `~/.local/state/lukleh/mcp-read-only-argocd/session_tokens.json` automatically. You do not need to create that file yourself. On subsequent requests, the persisted state file takes precedence over the live `ARGOCD_SESSION_*` environment value; clear or update the state file if you need to force a fresh token.
+### 5. Set the Environment Variables
 
-### 4. Validate and Test Connections
+Set one `ARGOCD_SESSION_<CONNECTION_NAME>` variable for each configured connection in the environment used to launch the server.
 
-```bash
-# Test all configured connections
-uv run python smoke_test.py
-
-# Test a specific connection
-uv run python smoke_test.py --connection staging
-
-# Show the exact paths the helper will use
-uv run python smoke_test.py --print-paths
-```
-
-### 5. Run the Server
-
-Run the server manually to verify:
+Example:
 
 ```bash
-uv run python -m src.server
-
-# Or if installed as a script:
-mcp-read-only-argocd
+export ARGOCD_SESSION_STAGING=your-session-token
+export ARGOCD_SESSION_PRODUCTION=your-other-session-token
 ```
 
-You can also point the server at another config directory:
+Optional per-connection timeout override:
 
 ```bash
-uv run python -m src.server --config-dir /path/to/config-dir
+export ARGOCD_TIMEOUT_STAGING=60
 ```
 
-### 6. Add MCP to Your AI Assistant
+The server persists rotated session cookies to `~/.local/state/lukleh/mcp-read-only-argocd/session_tokens.json`. If both the environment and the state file contain a token, the persisted state file wins until you update or remove it.
 
-For **Claude Code**:
+### 6. Configure Your MCP Client
+
+**Claude Code**
+
 ```bash
-claude mcp add mcp-read-only-argocd -- uv --directory {PATH_TO_MCP_READ_ONLY_ARGOCD} run python -m src.server
+claude mcp add mcp-read-only-argocd \
+  --scope user \
+  -e ARGOCD_SESSION_STAGING=your-session-token \
+  -e ARGOCD_SESSION_PRODUCTION=your-other-session-token \
+  -- uvx mcp-read-only-argocd
 ```
 
-For **Codex**:
+**Codex**
+
 ```bash
-codex mcp add mcp-read-only-argocd -- uv --directory {PATH_TO_MCP_READ_ONLY_ARGOCD} run python -m src.server
+codex mcp add mcp-read-only-argocd \
+  --env ARGOCD_SESSION_STAGING=your-session-token \
+  --env ARGOCD_SESSION_PRODUCTION=your-other-session-token \
+  -- uvx mcp-read-only-argocd
 ```
 
-Replace `{PATH_TO_MCP_READ_ONLY_ARGOCD}` with the absolute path where you cloned this repo (e.g., `/Users/yourname/projects/mcp-read-only-argocd`).
-Also configure one `ARGOCD_SESSION_<CONNECTION_NAME>` environment variable per
-connection in the same MCP entry.
+### 7. Restart and Test
+
+Restart your MCP client and try a simple query such as:
+
+```text
+List all applications in the staging Argo CD instance.
+```
+
+## Configuration
+
+`connections.yaml` supports a list of Argo CD connections:
+
+```yaml
+- connection_name: staging
+  url: https://argocd.example.com
+  description: Staging Argo CD instance
+  timeout: 30
+  verify_ssl: true
+```
+
+Fields:
+
+- `connection_name`: unique identifier used to derive environment variable names
+- `url`: Argo CD base URL
+- `description`: optional human-readable description
+- `timeout`: optional request timeout in seconds
+- `verify_ssl`: optional SSL verification toggle
+
+Environment variables:
+
+- `ARGOCD_SESSION_<CONNECTION_NAME>`
+- `ARGOCD_TIMEOUT_<CONNECTION_NAME>` (optional)
+- `MCP_READ_ONLY_ARGOCD_CONFIG_DIR`
+- `MCP_READ_ONLY_ARGOCD_STATE_DIR`
+- `MCP_READ_ONLY_ARGOCD_CACHE_DIR`
+
+## Command Line Testing
+
+```bash
+# Show the resolved runtime paths
+uvx mcp-read-only-argocd --print-paths
+
+# Write or refresh the default connections.yaml
+uvx mcp-read-only-argocd --write-sample-config
+uvx mcp-read-only-argocd --write-sample-config --force
+
+# Run the server with the default home-directory config
+uvx mcp-read-only-argocd
+
+# Or point at a different runtime root
+uvx mcp-read-only-argocd --config-dir /path/to/config-dir
+```
 
 ## MCP Tools
 
 ### Core
-- `list_connections` - List all configured Argo CD connections
-- `get_version` - Get Argo CD version information
-- `get_settings` - Get Argo CD settings
+
+- `list_connections`
+- `get_version`
+- `get_settings`
 
 ### Applications
-- `list_applications` - List all applications (with optional project/label filters)
-- `get_application` - Get application details
-- `get_application_resource_tree` - Get Kubernetes resource tree
-- `get_application_managed_resources` - Get managed resources
-- `get_application_logs` - Get application pod logs
+
+- `list_applications`
+- `get_application`
+- `get_application_resource_tree`
+- `get_application_managed_resources`
+- `get_application_logs`
 
 ### Projects
-- `list_projects` - List all projects
-- `get_project` - Get project details
+
+- `list_projects`
+- `get_project`
 
 ### Clusters
-- `list_clusters` - List all registered clusters
-- `get_cluster` - Get cluster details
+
+- `list_clusters`
+- `get_cluster`
 
 ### Repositories
-- `list_repositories` - List all configured repositories
-- `get_repository` - Get repository details
 
-## Example Queries
+- `list_repositories`
+- `get_repository`
 
-Once connected via Claude Code, Codex, or another MCP client:
+## Local Development
 
+If you want to work on the repository itself:
+
+```bash
+git clone https://github.com/lukleh/mcp-read-only-argocd.git
+cd mcp-read-only-argocd
+uv sync --extra dev
+uv run pytest -q
+uv run mcp-read-only-argocd --print-paths
+uv run python smoke_test.py --print-paths
 ```
-"List all applications in the staging Argo CD"
 
-"Show me the resource tree for the 'my-app' application"
-
-"What clusters are registered in production Argo CD?"
-
-"Get the logs for the 'frontend' application"
-```
+The checked-in sample file remains available at [connections.yaml.sample](connections.yaml.sample) for documentation and review, but package users should prefer `--write-sample-config`.
 
 ## License
 
