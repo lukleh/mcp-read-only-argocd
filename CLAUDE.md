@@ -50,7 +50,7 @@ uv run pytest
 **src/argocd_connector.py** - Argo CD API client
 - `ArgoCDConnector` wraps httpx for Argo CD API calls
 - **Critical**: `_get()` calls `_refresh_credentials()` before EVERY request
-- This allows updating injected session tokens without restarting the server
+- This reloads the configured credential sources without restarting the server
 - Automatic cookie rotation: captures refreshed `argocd.token` from response headers
 
 **src/exceptions.py** - Custom exception hierarchy
@@ -79,7 +79,7 @@ Each module exports a `register_*_tools(mcp, connectors)` function.
 1. `ConfigParser.load_config()` reads `connections.yaml`
 2. For each connection, `_process_connection()` creates an `ArgoCDConnection`
 3. Session tokens are loaded from environment variables at startup
-4. On each API request, `reload_session_token()` re-reads the runtime environment and persisted session cache to get fresh tokens
+4. On each API request, `reload_session_token()` re-reads the runtime environment and persisted session cache; persisted state overrides the live environment value when both are present
 
 ### Error Handling Pattern
 
@@ -97,15 +97,15 @@ Tool functions use `get_connector()` for validation instead of manual checks.
 
 Session-based authentication using Argo CD browser cookies:
 - Tokens are injected via environment variables (never in code or YAML)
-- Tokens are reloaded from the runtime environment before each request to support token rotation
+- Tokens are reloaded from the runtime environment before each request, but persisted rotated state takes precedence
 - Automatic capture and persistence of rotated tokens from Set-Cookie headers
 - Connection name in YAML maps to `ARGOCD_SESSION_<NAME>` in environment
 
 ## Key Design Decisions
 
 1. **Read-only by design**: Only GET requests are performed
-2. **Session token reload**: Tokens are reloaded from the runtime environment on every request to handle expiration gracefully
-3. **No credential storage**: Tokens only in environment variables, never in config files
+2. **Session token reload**: Tokens are reloaded from the configured credential sources on every request
+3. **No credential storage in YAML**: Tokens are injected via environment variables and may be cached in the local session state file
 4. **Multiple instance support**: Each connection has its own connector with independent configuration
 5. **MCP error handling**: Let exceptions propagate; framework handles them properly
 6. **NDJSON log parsing**: Argo CD log endpoints return newline-delimited JSON; the connector parses this automatically
