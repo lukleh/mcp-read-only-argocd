@@ -5,6 +5,12 @@ This project is set up for tag-driven PyPI releases with GitHub Actions and PyPI
 Current package status:
 - Published to PyPI as `0.1.0`
 
+## CLI convention
+
+- The public interface starts with the package command: `mcp-read-only-argocd`.
+- Repository-facing docs should prefer the root command plus flags, not extra top-level helper scripts.
+- If this repo ever needs auxiliary operations beyond flags, add them as subcommands under `mcp-read-only-argocd ...` rather than introducing new public console entry points.
+
 ## One-time PyPI setup
 
 1. Create the `mcp-read-only-argocd` project on PyPI if it does not exist yet.
