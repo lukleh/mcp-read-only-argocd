@@ -1,6 +1,6 @@
 [project]
 name = "mcp-read-only-argocd"
-version = "0.1.0"
+version = "0.1.1"
 description = "MCP server for read-only access to Argo CD instances using browser session cookies"
 readme = "README.md"
 requires-python = ">=3.11"
