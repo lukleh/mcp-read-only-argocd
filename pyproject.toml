@@ -49,7 +49,7 @@ build-backend = "hatchling.build"
 mcp-read-only-argocd = "mcp_read_only_argocd.server:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["mcp_read_only_argocd"]
+packages = ["src/mcp_read_only_argocd"]
 
 [dependency-groups]
 dev = [

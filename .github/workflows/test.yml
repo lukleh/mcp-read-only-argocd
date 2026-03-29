@@ -44,7 +44,7 @@ jobs:
 
     - name: Run linter
       run: |
-        uv run ruff check mcp_read_only_argocd/ tests/ smoke_test.py
+        uv run ruff check src/mcp_read_only_argocd/ tests/ smoke_test.py
 
     - name: Run tests
       run: |
