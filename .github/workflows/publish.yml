@@ -6,14 +6,51 @@ on:
       - "v*"
 
 jobs:
-  publish:
+  test:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-    environment:
-      name: pypi
-      url: https://pypi.org/p/mcp-read-only-argocd
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v5
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v6
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v7
+      with:
+        version: "latest"
+
+    - name: Cache uv environment
+      uses: actions/cache@v5
+      with:
+        path: |
+          ~/.cache/uv
+          .venv
+        key: ${{ runner.os }}-uv-publish-py${{ matrix.python-version }}-${{ hashFiles('uv.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-uv-publish-py${{ matrix.python-version }}-
+
+    - name: Install dependencies
+      run: |
+        uv sync --extra dev
+
+    - name: Run linter
+      run: |
+        uv run ruff check src/mcp_read_only_argocd/ tests/ smoke_test.py
+
+    - name: Run tests
+      run: |
+        uv run pytest -m "not integration" -q
+
+  package-smoke:
+    runs-on: ubuntu-latest
+    needs: test
 
     steps:
     - name: Checkout code
@@ -38,14 +75,6 @@ jobs:
           echo "Tag version $tag_version does not match pyproject.toml version $package_version" >&2
           exit 1
         fi
-
-    - name: Install dependencies
-      run: |
-        uv sync --extra dev
-
-    - name: Run tests
-      run: |
-        uv run pytest -q
 
     - name: Build package artifacts
       run: |
@@ -80,6 +109,32 @@ jobs:
           --state-dir "$tmp_dir/state" \
           --cache-dir "$tmp_dir/cache" \
           --print-paths
+
+  publish:
+    runs-on: ubuntu-latest
+    needs:
+      - test
+      - package-smoke
+    permissions:
+      contents: read
+      id-token: write
+    environment:
+      name: pypi
+      url: https://pypi.org/p/mcp-read-only-argocd
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v5
+
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v6
+      with:
+        python-version: "3.12"
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v7
+      with:
+        version: "latest"
 
     - name: Publish to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1

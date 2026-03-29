@@ -161,7 +161,7 @@ uvx mcp-read-only-argocd --print-paths
 
 # Write or refresh the default connections.yaml
 uvx mcp-read-only-argocd --write-sample-config
-uvx mcp-read-only-argocd --write-sample-config --force
+uvx mcp-read-only-argocd --write-sample-config --overwrite
 
 # Run the server with the default home-directory config
 uvx mcp-read-only-argocd

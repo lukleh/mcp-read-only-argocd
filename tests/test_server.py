@@ -47,8 +47,8 @@ def test_sample_config_matches_example_file():
     assert SAMPLE_CONNECTIONS_YAML == example_path.read_text(encoding="utf-8")
 
 
-def test_write_sample_config_requires_force_to_overwrite(tmp_path):
-    """Existing config files should be preserved unless force is requested."""
+def test_write_sample_config_requires_overwrite_to_replace(tmp_path):
+    """Existing config files should be preserved unless overwrite is requested."""
     from mcp_read_only_argocd.runtime_paths import RuntimePaths
     from mcp_read_only_argocd.server import write_sample_config
 
@@ -66,8 +66,8 @@ def test_write_sample_config_requires_force_to_overwrite(tmp_path):
         write_sample_config(runtime_paths)
 
 
-def test_write_sample_config_force_overwrites_existing_file(tmp_path):
-    """Force mode should replace an existing file with the sample config."""
+def test_write_sample_config_overwrite_replaces_existing_file(tmp_path):
+    """Overwrite mode should replace an existing file with the sample config."""
     from mcp_read_only_argocd.runtime_paths import RuntimePaths
     from mcp_read_only_argocd.server import (
         SAMPLE_CONNECTIONS_YAML,
@@ -84,7 +84,7 @@ def test_write_sample_config_force_overwrites_existing_file(tmp_path):
         "- connection_name: existing\n", encoding="utf-8"
     )
 
-    write_sample_config(runtime_paths, force=True)
+    write_sample_config(runtime_paths, overwrite=True)
 
     assert (
         runtime_paths.connections_file.read_text(encoding="utf-8")
@@ -138,8 +138,8 @@ def test_main_write_sample_config_and_print_paths_together(
     assert f"connections_file={config_dir / 'connections.yaml'}" in output
 
 
-def test_main_rejects_force_without_write_sample_config(monkeypatch):
-    """Force should only be accepted together with sample-config bootstrap."""
+def test_main_rejects_overwrite_without_write_sample_config(monkeypatch):
+    """Overwrite should only be accepted together with sample-config bootstrap."""
     import sys
 
     from mcp_read_only_argocd import server
@@ -149,7 +149,7 @@ def test_main_rejects_force_without_write_sample_config(monkeypatch):
         "argv",
         [
             "mcp-read-only-argocd",
-            "--force",
+            "--overwrite",
         ],
     )
 

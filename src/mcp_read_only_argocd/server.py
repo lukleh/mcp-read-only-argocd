@@ -137,14 +137,14 @@ class ReadOnlyArgoCDServer:
         self.mcp.run()
 
 
-def write_sample_config(runtime_paths: RuntimePaths, *, force: bool = False) -> Path:
+def write_sample_config(runtime_paths: RuntimePaths, *, overwrite: bool = False) -> Path:
     """Write a sample connections.yaml for package-based installs."""
     runtime_paths.ensure_directories()
 
     config_path = runtime_paths.connections_file
-    if config_path.exists() and not force:
+    if config_path.exists() and not overwrite:
         raise FileExistsError(
-            f"Config file already exists at {config_path}. Re-run with --force to overwrite it."
+            f"Config file already exists at {config_path}. Re-run with --overwrite to replace it."
         )
 
     config_path.write_text(SAMPLE_CONNECTIONS_YAML, encoding="utf-8")
@@ -181,9 +181,9 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help="Write a sample connections.yaml to the resolved config path and exit",
     )
     parser.add_argument(
-        "--force",
+        "--overwrite",
         action="store_true",
-        help="Overwrite connections.yaml when used with --write-sample-config",
+        help="Replace connections.yaml when used with --write-sample-config",
     )
     return parser
 
@@ -192,8 +192,8 @@ def main() -> None:
     parser = build_arg_parser()
     args = parser.parse_args()
 
-    if args.force and not args.write_sample_config:
-        parser.error("--force can only be used with --write-sample-config")
+    if args.overwrite and not args.write_sample_config:
+        parser.error("--overwrite can only be used with --write-sample-config")
 
     runtime_paths = resolve_runtime_paths(
         config_dir=args.config_dir,
@@ -203,7 +203,7 @@ def main() -> None:
 
     if args.write_sample_config:
         try:
-            config_path = write_sample_config(runtime_paths, force=args.force)
+            config_path = write_sample_config(runtime_paths, overwrite=args.overwrite)
         except FileExistsError as exc:
             parser.error(str(exc))
         print(f"Wrote sample config to {config_path}")
