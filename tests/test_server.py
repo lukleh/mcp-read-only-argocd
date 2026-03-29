@@ -1,8 +1,16 @@
 """Tests for MCP Read-Only Argo CD server bootstrap behavior."""
 
+from importlib.metadata import version
 from pathlib import Path
 
 import pytest
+
+
+def test_package_version_matches_distribution_metadata():
+    """The module should expose the installed distribution version."""
+    from mcp_read_only_argocd import __version__
+
+    assert __version__ == version("mcp-read-only-argocd")
 
 
 def test_write_sample_config_creates_runtime_dirs_and_file(tmp_path, monkeypatch):
