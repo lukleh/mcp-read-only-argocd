@@ -2,6 +2,9 @@
 
 This project is set up for tag-driven PyPI releases with GitHub Actions and PyPI trusted publishing.
 
+Current package status:
+- Published to PyPI as `0.1.0`
+
 ## One-time PyPI setup
 
 1. Create the `mcp-read-only-argocd` project on PyPI if it does not exist yet.
