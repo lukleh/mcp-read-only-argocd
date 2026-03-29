@@ -1,0 +1,30 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project aims to follow [Semantic Versioning](https://semver.org/).
+
+## [Unreleased]
+
+### Added
+
+- Root `CHANGELOG.md` using the Keep a Changelog format and seeded package history.
+
+### Changed
+
+- `project.urls.Changelog` now points to the in-repo changelog instead of the generic GitHub releases page.
+- The release flow now treats changelog maintenance as a required step and reuses changelog sections for GitHub release notes.
+
+## [0.1.0] - 2026-03-29
+
+### Added
+
+- Initial PyPI release for `uvx mcp-read-only-argocd`.
+- Canonical `src/mcp_read_only_argocd` package layout and metadata-backed `__version__`.
+- Package-native bootstrap commands for `--write-sample-config`, `--overwrite`, and `--print-paths`.
+- Trusted PyPI publishing with a gated GitHub Actions release workflow and manual `pypi` approval.
+
+### Changed
+
+- Standardized the publish workflow around full test gating and packaged artifact smoke tests.

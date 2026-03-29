@@ -1,6 +1,6 @@
 [project]
 name = "mcp-read-only-argocd"
-version = "0.1.0"
+version = "0.1.1"
 description = "MCP server for read-only access to Argo CD instances using browser session cookies"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -30,7 +30,7 @@ dependencies = [
 Homepage = "https://github.com/lukleh/mcp-read-only-argocd"
 Repository = "https://github.com/lukleh/mcp-read-only-argocd"
 Issues = "https://github.com/lukleh/mcp-read-only-argocd/issues"
-Changelog = "https://github.com/lukleh/mcp-read-only-argocd/releases"
+Changelog = "https://github.com/lukleh/mcp-read-only-argocd/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 dev = [
