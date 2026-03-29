@@ -31,7 +31,8 @@ logger = logging.getLogger(__name__)
 SAMPLE_CONNECTIONS_YAML = dedent(
     """
     # MCP Read-Only Argo CD Server - Connection Configuration Sample
-    # Copy this file to ~/.config/lukleh/mcp-read-only-argocd/connections.yaml
+    # Edit this file to configure your Argo CD connections.
+    # Default runtime location: ~/.config/lukleh/mcp-read-only-argocd/connections.yaml
 
     # Staging Argo CD instance
     - connection_name: staging

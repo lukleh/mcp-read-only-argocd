@@ -51,15 +51,6 @@ mcp-read-only-argocd = "mcp_read_only_argocd.server:main"
 [tool.hatch.build.targets.wheel]
 packages = ["src/mcp_read_only_argocd"]
 
-[dependency-groups]
-dev = [
-    "pytest>=7.0.0",
-    "pytest-timeout>=2.2.0",
-    "pytest-asyncio>=0.21.0",
-    "black>=23.0.0",
-    "ruff>=0.1.0",
-]
-
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
