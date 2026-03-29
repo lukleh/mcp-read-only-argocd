@@ -2,8 +2,8 @@
 
 import httpx
 
-from src.argocd_connector import ArgoCDConnector
-from src.config import ArgoCDConnection
+from mcp_read_only_argocd.argocd_connector import ArgoCDConnector
+from mcp_read_only_argocd.config import ArgoCDConnection
 
 
 def test_handle_response_parses_ndjson():

@@ -10,13 +10,14 @@ MCP Read-Only Argo CD Server provides read-only access to Argo CD instances via 
 
 ```bash
 # Install dependencies
-uv sync
+uv sync --extra dev
 
 # Run the server manually for testing
-uv run python -m src.server
+uv run python -m mcp_read_only_argocd.server
 
-# Run with custom config file
-uv run python -m src.server /path/to/connections.yaml
+# Show runtime paths or write the sample config
+uv run mcp-read-only-argocd --print-paths
+uv run mcp-read-only-argocd --write-sample-config
 
 # Smoke test all configured connections
 uv run python smoke_test.py
@@ -25,8 +26,8 @@ uv run python smoke_test.py
 uv run python smoke_test.py --connection staging
 
 # Code formatting
-uv run black src/
-uv run ruff check src/
+uv run black src/mcp_read_only_argocd/
+uv run ruff check src/mcp_read_only_argocd/ tests/ smoke_test.py
 
 # Run tests
 uv run pytest
@@ -36,33 +37,33 @@ uv run pytest
 
 ### Core Components
 
-**src/server.py** - MCP server entry point
+**src/mcp_read_only_argocd/server.py** - MCP server entry point
 - `ReadOnlyArgoCDServer` class manages connections and orchestrates tool registration
-- Calls domain-specific registration functions from `src/tools/`
+- Calls domain-specific registration functions from `src/mcp_read_only_argocd/tools/`
 - Error handling: Let exceptions propagate naturally - the MCP framework handles them
 
-**src/config.py** - Configuration management
+**src/mcp_read_only_argocd/config.py** - Configuration management
 - `ArgoCDConnection` (Pydantic model): Validates connection settings
 - `ConfigParser`: Loads connections from YAML and environment variables
 - Session token pattern: `ARGOCD_SESSION_<CONNECTION_NAME>` (uppercase, hyphens→underscores)
 - **Dynamic token reloading**: `reload_session_token()` reloads the runtime environment and persisted session cache on every call
 
-**src/argocd_connector.py** - Argo CD API client
+**src/mcp_read_only_argocd/argocd_connector.py** - Argo CD API client
 - `ArgoCDConnector` wraps httpx for Argo CD API calls
 - **Critical**: `_get()` calls `_refresh_credentials()` before EVERY request
 - This reloads the configured credential sources without restarting the server
 - Automatic cookie rotation: captures refreshed `argocd.token` from response headers
 
-**src/exceptions.py** - Custom exception hierarchy
+**src/mcp_read_only_argocd/exceptions.py** - Custom exception hierarchy
 - `ArgoCDError` (base), `ConnectionNotFoundError`, `AuthenticationError`
 - `PermissionDeniedError`, `ArgoCDAPIError`, `ArgoCDTimeoutError`
 
-**src/validation.py** - Validation utilities
+**src/mcp_read_only_argocd/validation.py** - Validation utilities
 - `get_connector()`: Centralizes connection validation
 
 ### Tool Organization
 
-Tools are organized into domain-specific modules under `src/tools/`:
+Tools are organized into domain-specific modules under `src/mcp_read_only_argocd/tools/`:
 
 | Module | Tools | Description |
 |--------|-------|-------------|
@@ -83,7 +84,7 @@ Each module exports a `register_*_tools(mcp, connectors)` function.
 
 ### Error Handling Pattern
 
-Custom exceptions in `src/exceptions.py` provide clear, typed errors:
+Custom exceptions in `src/mcp_read_only_argocd/exceptions.py` provide clear, typed errors:
 - `ConnectionNotFoundError`: Invalid connection name (shows available options)
 - `AuthenticationError`: HTTP 401, expired session
 - `PermissionDeniedError`: HTTP 403, insufficient permissions
