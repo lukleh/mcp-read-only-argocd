@@ -30,7 +30,7 @@ dependencies = [
 Homepage = "https://github.com/lukleh/mcp-read-only-argocd"
 Repository = "https://github.com/lukleh/mcp-read-only-argocd"
 Issues = "https://github.com/lukleh/mcp-read-only-argocd/issues"
-Changelog = "https://github.com/lukleh/mcp-read-only-argocd/releases"
+Changelog = "https://github.com/lukleh/mcp-read-only-argocd/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 dev = [
