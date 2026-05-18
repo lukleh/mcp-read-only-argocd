@@ -8,8 +8,8 @@ A secure MCP (Model Context Protocol) server that provides read-only access to A
 
 > Default layout:
 > - Config: `~/.config/lukleh/mcp-read-only-argocd/connections.yaml`
-> - Credentials: injected via the MCP client or shell environment
-> - State: `~/.local/state/lukleh/mcp-read-only-argocd/session_tokens.json`
+> - Credentials: stored in `connections.yaml`
+> - Rotated session state: `~/.local/state/lukleh/mcp-read-only-argocd/session_tokens.json`
 > - Cache: `~/.cache/lukleh/mcp-read-only-argocd/`
 
 ## Features
@@ -68,10 +68,12 @@ Edit `~/.config/lukleh/mcp-read-only-argocd/connections.yaml`:
 - connection_name: staging
   url: https://argocd.example.com
   description: Staging Argo CD
+  session_token: your-session-token
 
 - connection_name: production
   url: https://argocd-prod.example.com
   description: Production Argo CD
+  session_token: your-other-session-token
 ```
 
 ### 4. Get Your `argocd.token` Session Cookie
@@ -81,24 +83,16 @@ Edit `~/.config/lukleh/mcp-read-only-argocd/connections.yaml`:
 3. Go to Application/Storage -> Cookies
 4. Copy the value of the `argocd.token` cookie
 
-### 5. Set the Environment Variables
+### 5. Store the Session Cookie
 
-Set one `ARGOCD_SESSION_<CONNECTION_NAME>` variable for each configured connection in the environment used to launch the server.
-
-Example:
-
-```bash
-export ARGOCD_SESSION_STAGING=your-session-token
-export ARGOCD_SESSION_PRODUCTION=your-other-session-token
-```
-
-Optional per-connection timeout override:
-
-```bash
-export ARGOCD_TIMEOUT_STAGING=60
-```
-
-The server persists rotated session cookies to `~/.local/state/lukleh/mcp-read-only-argocd/session_tokens.json`. If both the environment and the state file contain a token, the persisted state file wins until you update or remove it.
+Put the cookie value in the `session_token` field for each connection in
+`~/.config/lukleh/mcp-read-only-argocd/connections.yaml`. The server persists
+rotated session cookies to
+`~/.local/state/lukleh/mcp-read-only-argocd/session_tokens.json`, keyed by
+`connection_name`. The server detects changes to `connections.yaml` before tool
+calls, so editing this file does not require an MCP restart. If both
+`connections.yaml` and the state file contain a token for the same connection,
+the persisted state file wins until you update or remove it.
 
 ### 6. Configure Your MCP Client
 
@@ -107,8 +101,6 @@ The server persists rotated session cookies to `~/.local/state/lukleh/mcp-read-o
 ```bash
 claude mcp add mcp-read-only-argocd \
   --scope user \
-  -e ARGOCD_SESSION_STAGING=your-session-token \
-  -e ARGOCD_SESSION_PRODUCTION=your-other-session-token \
   -- uvx mcp-read-only-argocd@latest
 ```
 
@@ -116,8 +108,6 @@ claude mcp add mcp-read-only-argocd \
 
 ```bash
 codex mcp add mcp-read-only-argocd \
-  --env ARGOCD_SESSION_STAGING=your-session-token \
-  --env ARGOCD_SESSION_PRODUCTION=your-other-session-token \
   -- uvx mcp-read-only-argocd@latest
 ```
 
@@ -137,22 +127,22 @@ List all applications in the staging Argo CD instance.
 - connection_name: staging
   url: https://argocd.example.com
   description: Staging Argo CD instance
+  session_token: your-session-token
   timeout: 30
   verify_ssl: true
 ```
 
 Fields:
 
-- `connection_name`: unique identifier used to derive environment variable names
+- `connection_name`: unique identifier used in tool calls and rotated session state
 - `url`: Argo CD base URL
 - `description`: optional human-readable description
+- `session_token`: Argo CD `argocd.token` browser cookie
 - `timeout`: optional request timeout in seconds
 - `verify_ssl`: optional SSL verification toggle
 
-Environment variables:
+Runtime path override environment variables:
 
-- `ARGOCD_SESSION_<CONNECTION_NAME>`
-- `ARGOCD_TIMEOUT_<CONNECTION_NAME>` (optional)
 - `MCP_READ_ONLY_ARGOCD_CONFIG_DIR`
 - `MCP_READ_ONLY_ARGOCD_STATE_DIR`
 - `MCP_READ_ONLY_ARGOCD_CACHE_DIR`

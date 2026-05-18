@@ -7,6 +7,18 @@ and this project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-05-18
+
+### Changed
+
+- Store Argo CD `argocd.token` session cookies in runtime `connections.yaml`
+  instead of `ARGOCD_SESSION_<CONNECTION_NAME>` environment variables.
+- Store rotated session cookies in `session_tokens.json` keyed by
+  `connection_name` instead of env-var-style names.
+- Hot-reload `connections.yaml` before tool calls so token and connection
+  edits do not require restarting the MCP server.
+- Remove per-connection session and timeout environment variable support.
+
 ## [0.1.2] - 2026-04-03
 
 ### Added

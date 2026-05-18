@@ -19,10 +19,10 @@ class ArgoCDConnector:
 
     Authentication:
         Uses browser session cookie (argocd.token) for authentication.
-        Set ARGOCD_SESSION_<CONNECTION_NAME> environment variable with
-        the cookie value from your browser.
+        Set session_token in connections.yaml with the cookie value from
+        your browser.
 
-    Credentials are reloaded from the environment and cached session state before
+    Credentials are reloaded from the active connection config and cached state before
     each request to support token rotation without server restart.
     """
 
@@ -48,7 +48,7 @@ class ArgoCDConnector:
         return quote(value, safe="")
 
     def _refresh_credentials(self) -> None:
-        """Refresh credentials from the environment and cached session state."""
+        """Refresh credentials from active config and cached session state."""
         session_token = self.connection.reload_session_token()
         self.client.cookies.set("argocd.token", session_token)
 

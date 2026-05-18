@@ -6,7 +6,7 @@ This module provides:
 """
 
 import json
-from typing import Dict
+from collections.abc import Mapping
 
 from mcp.server.fastmcp import FastMCP
 
@@ -16,7 +16,7 @@ from ..validation import get_connector
 
 def register_project_tools(
     mcp: FastMCP,
-    connectors: Dict[str, ArgoCDConnector],
+    connectors: Mapping[str, ArgoCDConnector],
 ) -> None:
     """Register project MCP tools.
 

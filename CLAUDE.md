@@ -44,14 +44,14 @@ uv run pytest
 
 **src/mcp_read_only_argocd/config.py** - Configuration management
 - `ArgoCDConnection` (Pydantic model): Validates connection settings
-- `ConfigParser`: Loads connections from YAML and environment variables
-- Session token pattern: `ARGOCD_SESSION_<CONNECTION_NAME>` (uppercase, hyphens→underscores)
-- **Dynamic token reloading**: `reload_session_token()` reloads the runtime environment and persisted session cache on every call
+- `ConfigParser`: Loads connections and session tokens from YAML
+- Session token state is keyed by `connection_name`
+- **Dynamic token reloading**: the server hot-reloads changed YAML before tool calls, and `reload_session_token()` overlays persisted session cache on every request
 
 **src/mcp_read_only_argocd/argocd_connector.py** - Argo CD API client
 - `ArgoCDConnector` wraps httpx for Argo CD API calls
 - **Critical**: `_get()` calls `_refresh_credentials()` before EVERY request
-- This reloads the configured credential sources without restarting the server
+- This applies the currently loaded credential sources without restarting the server
 - Automatic cookie rotation: captures refreshed `argocd.token` from response headers
 
 **src/mcp_read_only_argocd/exceptions.py** - Custom exception hierarchy
@@ -79,8 +79,9 @@ Each module exports a `register_*_tools(mcp, connectors)` function.
 
 1. `ConfigParser.load_config()` reads `connections.yaml`
 2. For each connection, `_process_connection()` creates an `ArgoCDConnection`
-3. Session tokens are loaded from environment variables at startup
-4. On each API request, `reload_session_token()` re-reads the runtime environment and persisted session cache; persisted state overrides the live environment value when both are present
+3. Session tokens are loaded from each connection's `session_token` field
+4. Tool calls check whether `connections.yaml` changed and keep the last good config if reload fails
+5. On each API request, `reload_session_token()` re-reads the currently loaded token and persisted session cache; persisted state overrides the YAML value when both are present
 
 ### Error Handling Pattern
 
@@ -97,16 +98,17 @@ Tool functions use `get_connector()` for validation instead of manual checks.
 ### Authentication
 
 Session-based authentication using Argo CD browser cookies:
-- Tokens are injected via environment variables (never in code or YAML)
-- Tokens are reloaded from the runtime environment before each request, but persisted rotated state takes precedence
+- Tokens are stored in the local runtime `connections.yaml`
+- Changes to runtime `connections.yaml` are hot-reloaded before tool calls
+- Tokens are reloaded from the active connection before each request, but persisted rotated state takes precedence
 - Automatic capture and persistence of rotated tokens from Set-Cookie headers
-- Connection name in YAML maps to `ARGOCD_SESSION_<NAME>` in environment
+- Rotated session state is keyed by `connection_name`
 
 ## Key Design Decisions
 
 1. **Read-only by design**: Only GET requests are performed
 2. **Session token reload**: Tokens are reloaded from the configured credential sources on every request
-3. **No credential storage in YAML**: Tokens are injected via environment variables and may be cached in the local session state file
+3. **Local YAML credential storage**: Tokens are read from the runtime `connections.yaml` and may be cached in the local session state file after rotation
 4. **Multiple instance support**: Each connection has its own connector with independent configuration
 5. **MCP error handling**: Let exceptions propagate; framework handles them properly
 6. **NDJSON log parsing**: Argo CD log endpoints return newline-delimited JSON; the connector parses this automatically
