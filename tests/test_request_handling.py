@@ -23,8 +23,7 @@ def create_mock_connector(connection, handler):
 
 
 @pytest.fixture
-def connection(monkeypatch):
-    monkeypatch.setenv("ARGOCD_SESSION_TEST", "test_session_token")
+def connection():
     return ArgoCDConnection(
         connection_name="test",
         url="https://argocd.example.com",

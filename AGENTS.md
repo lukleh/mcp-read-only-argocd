@@ -17,10 +17,10 @@
 Target Python 3.11+ with four-space indentation, explicit type hints, and small focused helpers. Use `snake_case` for modules, functions, tests, and config keys; use `PascalCase` for classes and Pydantic models. Keep tool registration split by domain instead of growing `server.py`, and preserve the current exception-driven error flow rather than returning ad hoc error payloads.
 
 ## Testing Guidelines
-Pytest uses `unit` and `integration` markers from `pyproject.toml`; prefer unit coverage by default and reserve integration runs for live Argo CD environments. Add or update tests whenever request shaping, runtime path handling, cookie refresh, NDJSON log parsing, or MCP tool outputs change. When touching token reload or persistence behavior, cover both environment-driven and state-file-driven cases.
+Pytest uses `unit` and `integration` markers from `pyproject.toml`; prefer unit coverage by default and reserve integration runs for live Argo CD environments. Add or update tests whenever request shaping, runtime path handling, cookie refresh, NDJSON log parsing, MCP tool outputs, or hot reload behavior changes. When touching token reload or persistence behavior, cover both YAML-configured and state-file-driven cases.
 
 ## Commit & Pull Request Guidelines
 Use short imperative commit subjects in the existing style, and keep each commit scoped to one behavior change. Pull requests should summarize the affected Argo CD flows, list the commands you ran, and call out any smoke-test or live-environment validation separately from unit tests.
 
 ## Security & Configuration Tips
-Do not store Argo CD session tokens in source-controlled files; credentials belong in `ARGOCD_SESSION_<CONNECTION_NAME>` or the runtime state file only. Preserve the read-only contract by keeping connector traffic to safe endpoints and by treating rotated cookies as sensitive state under `~/.local/state/lukleh/mcp-read-only-argocd/`.
+Do not store Argo CD session tokens in source-controlled files; credentials belong in the local runtime `connections.yaml` or the runtime state file only. Preserve the read-only contract by keeping connector traffic to safe endpoints and by treating configured and rotated cookies as sensitive local state.

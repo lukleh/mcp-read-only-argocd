@@ -9,7 +9,8 @@ This module provides:
 """
 
 import json
-from typing import Dict, List
+from collections.abc import Mapping
+from typing import List
 
 from mcp.server.fastmcp import FastMCP
 
@@ -19,7 +20,7 @@ from ..validation import get_connector
 
 def register_application_tools(
     mcp: FastMCP,
-    connectors: Dict[str, ArgoCDConnector],
+    connectors: Mapping[str, ArgoCDConnector],
 ) -> None:
     """Register application MCP tools.
 

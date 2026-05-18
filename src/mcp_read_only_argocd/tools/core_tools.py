@@ -7,7 +7,7 @@ This module provides:
 """
 
 import json
-from typing import Dict
+from collections.abc import Mapping
 
 from mcp.server.fastmcp import FastMCP
 
@@ -18,8 +18,8 @@ from ..validation import get_connector
 
 def register_core_tools(
     mcp: FastMCP,
-    connectors: Dict[str, ArgoCDConnector],
-    connections: Dict[str, ArgoCDConnection],
+    connectors: Mapping[str, ArgoCDConnector],
+    connections: Mapping[str, ArgoCDConnection],
 ) -> None:
     """Register core MCP tools for connection management.
 

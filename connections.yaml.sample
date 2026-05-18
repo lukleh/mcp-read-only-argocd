@@ -6,6 +6,7 @@
 - connection_name: staging
   url: https://argocd.example.com
   description: Staging Argo CD instance
+  session_token: change_me
   # Optional: override default timeout (30 seconds)
   # timeout: 60
 
@@ -13,6 +14,7 @@
 - connection_name: production
   url: https://argocd-prod.example.com
   description: Production environment Argo CD
+  session_token: change_me
   # Optional settings:
   # timeout: 30
   # verify_ssl: true  # Set to false for self-signed certificates (not recommended)
@@ -21,20 +23,19 @@
 - connection_name: local
   url: http://localhost:8080
   description: Local development Argo CD
+  session_token: change_me
   # For local instances, you might want to disable SSL verification
   verify_ssl: false
 
 # Notes:
-# - Session tokens are read from environment variables:
-#     ARGOCD_SESSION_<CONNECTION_NAME> (e.g., ARGOCD_SESSION_STAGING)
-#
 # - To get your session token:
 #     1. Log into Argo CD web UI
 #     2. Open browser developer tools (F12)
 #     3. Go to Application tab -> Cookies
 #     4. Copy the value of 'argocd.token' cookie
 #
+# - Store that cookie value in the session_token field for each connection
 # - Connection names should use only letters, numbers, underscores, and hyphens
 # - URLs should not include trailing slashes
-# - Credentials are reloaded from the runtime environment and persisted session state before each request to support token rotation
+# - Changes to this file are detected before tool calls, without restarting the MCP
 # - If both sources contain a token, the persisted session state wins until you update or remove it

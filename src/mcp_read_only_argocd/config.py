@@ -1,16 +1,11 @@
 import os
 import tempfile
 import json
-from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any
 
 import yaml
 from pydantic import BaseModel, Field, HttpUrl, PrivateAttr, field_validator
-
-
-def _copy_runtime_env() -> dict[str, str]:
-    return dict(os.environ)
 
 
 def _read_state_file(state_path: Path | None) -> dict[str, str]:
@@ -26,17 +21,6 @@ def _read_state_file(state_path: Path | None) -> dict[str, str]:
         for key, value in raw_data.items()
         if isinstance(key, str) and isinstance(value, str)
     }
-
-
-def _merge_credential_sources(
-    state_path: Path | None,
-    runtime_env: Mapping[str, str] | None,
-) -> dict[str, str]:
-    merged: dict[str, str] = {}
-    if runtime_env:
-        merged.update(runtime_env)
-    merged.update(_read_state_file(state_path))
-    return merged
 
 
 def _persist_state_value(state_path: Path, key: str, new_value: str) -> None:
@@ -78,14 +62,16 @@ class ArgoCDConnection(BaseModel):
     )
 
     _state_path: Path | None = PrivateAttr(default=None)
-    _runtime_env_provider: Callable[[], Mapping[str, str]] = PrivateAttr(
-        default_factory=lambda: _copy_runtime_env
-    )
+    _configured_session_token: str | None = PrivateAttr(default=None)
+
+    def model_post_init(self, __context: Any) -> None:
+        """Preserve the session token explicitly declared in YAML config."""
+        self._configured_session_token = self.session_token
 
     @field_validator("connection_name")
     @classmethod
     def validate_connection_name(cls, value: str) -> str:
-        """Ensure connection name is valid for environment variable naming."""
+        """Ensure connection name is valid for state-file keys."""
         if not value.replace("_", "").replace("-", "").isalnum():
             raise ValueError(
                 "Connection name must contain only letters, numbers, underscores, and hyphens"
@@ -101,34 +87,28 @@ class ArgoCDConnection(BaseModel):
     def configure_credential_sources(
         self,
         state_path: Path | None,
-        runtime_env_provider: Callable[[], Mapping[str, str]] | None = None,
     ) -> None:
         self._state_path = state_path
-        if runtime_env_provider is not None:
-            self._runtime_env_provider = runtime_env_provider
 
-    def get_env_var_name(self) -> str:
-        """Get the environment variable name for this connection's session token."""
-        return f"ARGOCD_SESSION_{self.connection_name.upper().replace('-', '_')}"
-
-    def get_timeout_env_var_name(self) -> str:
-        return f"ARGOCD_TIMEOUT_{self.connection_name.upper().replace('-', '_')}"
+    def get_state_key(self) -> str:
+        """Get the session state key for this connection."""
+        return self.connection_name
 
     def _load_credential_values(self) -> dict[str, str]:
-        return _merge_credential_sources(
-            self._state_path,
-            self._runtime_env_provider(),
-        )
+        values: dict[str, str] = {}
+        if self._configured_session_token:
+            values[self.get_state_key()] = self._configured_session_token
+        values.update(_read_state_file(self._state_path))
+        return values
 
     def reload_session_token(self) -> str:
-        """Reload session token from runtime environment and cached state."""
-        env_var_name = self.get_env_var_name()
-        session_token = self._load_credential_values().get(env_var_name)
+        """Reload session token from YAML config and cached rotated state."""
+        session_token = self._load_credential_values().get(self.get_state_key())
 
         if not session_token:
             raise ValueError(
                 f"Missing session token for connection '{self.connection_name}'. "
-                f"Please set {env_var_name} in the environment."
+                "Please set session_token in connections.yaml."
             )
 
         self.session_token = session_token
@@ -144,7 +124,7 @@ class ArgoCDConnection(BaseModel):
         state_path = self._state_path
         if state_path is None:
             return
-        _persist_state_value(state_path, self.get_env_var_name(), new_token)
+        _persist_state_value(state_path, self.get_state_key(), new_token)
 
 
 class ConfigParser:
@@ -155,19 +135,21 @@ class ConfigParser:
         config_path: str | Path,
         *,
         state_path: str | Path | None = None,
-        runtime_env_provider: Callable[[], Mapping[str, str]] | None = None,
     ):
         self.config_path = Path(config_path).expanduser()
         self.state_path = Path(state_path).expanduser() if state_path else None
-        self.runtime_env_provider = runtime_env_provider or _copy_runtime_env
 
     def load_config(self) -> list[ArgoCDConnection]:
         """Load and parse connection configuration from YAML file."""
         if not self.config_path.exists():
             raise FileNotFoundError(f"Configuration file not found: {self.config_path}")
 
-        with self.config_path.open("r", encoding="utf-8") as handle:
-            raw_config = yaml.safe_load(handle) or []
+        yaml_text = self.config_path.read_text(encoding="utf-8")
+        return self.load_config_from_text(yaml_text)
+
+    def load_config_from_text(self, yaml_text: str) -> list[ArgoCDConnection]:
+        """Load and parse connection configuration from a YAML text snapshot."""
+        raw_config = yaml.safe_load(yaml_text) or []
 
         return [self._process_connection(conn_data) for conn_data in raw_config]
 
@@ -176,25 +158,8 @@ class ConfigParser:
         connection = ArgoCDConnection(**conn_data)
         connection.configure_credential_sources(
             self.state_path,
-            self.runtime_env_provider,
         )
 
-        env_values = connection._load_credential_values()
-        session_token = env_values.get(connection.get_env_var_name())
-        if session_token:
-            connection.session_token = session_token
-
-        if not session_token:
-            raise ValueError(
-                f"Missing session token for connection '{connection.connection_name}'. "
-                f"Please set {connection.get_env_var_name()} in the environment."
-            )
-
-        timeout_override = env_values.get(connection.get_timeout_env_var_name())
-        if timeout_override:
-            try:
-                connection.timeout = int(timeout_override)
-            except ValueError:
-                pass
+        connection.reload_session_token()
 
         return connection

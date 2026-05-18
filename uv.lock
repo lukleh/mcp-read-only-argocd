@@ -347,7 +347,7 @@ wheels = [
 
 [[package]]
 name = "mcp-read-only-argocd"
-version = "0.1.2"
+version = "0.2.0"
 source = { editable = "." }
 dependencies = [
     { name = "httpx" },

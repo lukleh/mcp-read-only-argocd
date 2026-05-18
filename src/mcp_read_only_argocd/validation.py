@@ -4,14 +4,14 @@ This module provides helper functions that centralize common validation
 patterns used across all MCP tool functions.
 """
 
-from typing import Dict
+from collections.abc import Mapping
 
 from .exceptions import ConnectionNotFoundError
 from .argocd_connector import ArgoCDConnector
 
 
 def get_connector(
-    connectors: Dict[str, ArgoCDConnector],
+    connectors: Mapping[str, ArgoCDConnector],
     connection_name: str,
 ) -> ArgoCDConnector:
     """Get a connector by name or raise ConnectionNotFoundError.
