@@ -266,7 +266,7 @@ async def main(
     if not runtime_paths.connections_file.exists():
         print(f"\n✗ Configuration file not found: {runtime_paths.connections_file}")
         print(
-            "  Run `uvx mcp-read-only-argocd --write-sample-config` or create "
+            "  Run `uvx mcp-read-only-argocd@latest --write-sample-config` or create "
             "~/.config/lukleh/mcp-read-only-argocd/connections.yaml from "
             "connections.yaml.sample"
         )
