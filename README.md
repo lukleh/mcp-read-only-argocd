@@ -41,19 +41,23 @@ Unlike token-based setups, this server can reuse your existing browser session:
 
 ```bash
 # Run the published package without cloning the repository
-uvx mcp-read-only-argocd --write-sample-config
+uvx mcp-read-only-argocd@latest --write-sample-config
 
 # Or install it once and reuse the command directly
 uv tool install mcp-read-only-argocd
 mcp-read-only-argocd --write-sample-config
 ```
 
+When using `uvx`, prefer `mcp-read-only-argocd@latest` in user-facing docs and
+MCP client configs. This avoids reusing a stale cached tool environment after a
+new release is published.
+
 The command above writes a starter config to `~/.config/lukleh/mcp-read-only-argocd/connections.yaml`.
 
 ### 2. Confirm Runtime Paths
 
 ```bash
-uvx mcp-read-only-argocd --print-paths
+uvx mcp-read-only-argocd@latest --print-paths
 ```
 
 ### 3. Edit the Connections File
@@ -105,7 +109,7 @@ claude mcp add mcp-read-only-argocd \
   --scope user \
   -e ARGOCD_SESSION_STAGING=your-session-token \
   -e ARGOCD_SESSION_PRODUCTION=your-other-session-token \
-  -- uvx mcp-read-only-argocd
+  -- uvx mcp-read-only-argocd@latest
 ```
 
 **Codex**
@@ -114,7 +118,7 @@ claude mcp add mcp-read-only-argocd \
 codex mcp add mcp-read-only-argocd \
   --env ARGOCD_SESSION_STAGING=your-session-token \
   --env ARGOCD_SESSION_PRODUCTION=your-other-session-token \
-  -- uvx mcp-read-only-argocd
+  -- uvx mcp-read-only-argocd@latest
 ```
 
 ### 7. Restart and Test
@@ -157,17 +161,17 @@ Environment variables:
 
 ```bash
 # Show the resolved runtime paths
-uvx mcp-read-only-argocd --print-paths
+uvx mcp-read-only-argocd@latest --print-paths
 
 # Write or refresh the default connections.yaml
-uvx mcp-read-only-argocd --write-sample-config
-uvx mcp-read-only-argocd --write-sample-config --overwrite
+uvx mcp-read-only-argocd@latest --write-sample-config
+uvx mcp-read-only-argocd@latest --write-sample-config --overwrite
 
 # Run the server with the default home-directory config
-uvx mcp-read-only-argocd
+uvx mcp-read-only-argocd@latest
 
 # Or point at a different runtime root
-uvx mcp-read-only-argocd --config-dir /path/to/config-dir
+uvx mcp-read-only-argocd@latest --config-dir /path/to/config-dir
 ```
 
 ## MCP Tools
