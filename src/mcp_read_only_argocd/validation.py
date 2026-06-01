@@ -5,8 +5,10 @@ patterns used across all MCP tool functions.
 """
 
 from collections.abc import Mapping
+import json
+from typing import Any, Awaitable
 
-from .exceptions import ConnectionNotFoundError
+from .exceptions import AuthenticationError, ConnectionNotFoundError
 from .argocd_connector import ArgoCDConnector
 
 
@@ -41,3 +43,21 @@ def get_connector(
             available=list(connectors.keys()),
         )
     return connectors[connection_name]
+
+
+async def render_tool_result(operation: Awaitable[Any]) -> str:
+    """Serialize tool results, returning auth failures as normal JSON payloads."""
+    try:
+        result = await operation
+    except AuthenticationError as exc:
+        result = {
+            "error": "authentication_failed",
+            "connection_name": exc.connection_name,
+            "message": str(exc),
+            "next_step": (
+                "Log in to the Argo CD web UI in Chrome Profile 1, then retry the "
+                "tool call. If that still fails, update session_token in connections.yaml."
+            ),
+        }
+
+    return json.dumps(result, indent=2)

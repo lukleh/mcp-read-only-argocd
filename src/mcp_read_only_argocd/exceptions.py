@@ -51,6 +51,7 @@ class AuthenticationError(ArgoCDError):
 
     def __init__(self, connection_name: str, message: str = ""):
         self.connection_name = connection_name
+        self.message = message
         detail = f" {message}" if message else " Session may have expired."
         super().__init__(f"Authentication failed for {connection_name}.{detail}")
 

@@ -13,7 +13,7 @@ from mcp.server.fastmcp import FastMCP
 
 from ..config import ArgoCDConnection
 from ..argocd_connector import ArgoCDConnector
-from ..validation import get_connector
+from ..validation import get_connector, render_tool_result
 
 
 def register_core_tools(
@@ -65,8 +65,7 @@ def register_core_tools(
             JSON string with version information.
         """
         connector = get_connector(connectors, connection_name)
-        version = await connector.get_version()
-        return json.dumps(version, indent=2)
+        return await render_tool_result(connector.get_version())
 
     @mcp.tool()
     async def get_settings(connection_name: str) -> str:
@@ -80,5 +79,4 @@ def register_core_tools(
             JSON string with Argo CD settings.
         """
         connector = get_connector(connectors, connection_name)
-        settings = await connector.get_settings()
-        return json.dumps(settings, indent=2)
+        return await render_tool_result(connector.get_settings())

@@ -5,13 +5,12 @@ This module provides:
 - get_project: Get project details
 """
 
-import json
 from collections.abc import Mapping
 
 from mcp.server.fastmcp import FastMCP
 
 from ..argocd_connector import ArgoCDConnector
-from ..validation import get_connector
+from ..validation import get_connector, render_tool_result
 
 
 def register_project_tools(
@@ -39,8 +38,7 @@ def register_project_tools(
             JSON string with list of projects.
         """
         connector = get_connector(connectors, connection_name)
-        projects = await connector.list_projects()
-        return json.dumps(projects, indent=2)
+        return await render_tool_result(connector.list_projects())
 
     @mcp.tool()
     async def get_project(connection_name: str, name: str) -> str:
@@ -55,5 +53,4 @@ def register_project_tools(
             JSON string with project details including source repos, destinations, and roles.
         """
         connector = get_connector(connectors, connection_name)
-        project = await connector.get_project(name)
-        return json.dumps(project, indent=2)
+        return await render_tool_result(connector.get_project(name))
