@@ -7,6 +7,23 @@ and this project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-06-01
+
+### Added
+
+- Refresh stale Argo CD `argocd.token` cookies from Chrome Profile 1 after a
+  401 response, retry once, and save a working token back to
+  `connections.yaml`.
+- Return structured JSON authentication failures from MCP tools when both the
+  configured token and Chrome token cannot authenticate.
+
+### Changed
+
+- Treat `connections.yaml` as the only token store and write refreshed tokens
+  back to it with comment-preserving YAML updates.
+- Remove the `session_tokens.json` state file and `--state-dir` CLI option.
+- Update packaged artifact smoke tests for the single-YAML runtime layout.
+
 ## [0.2.0] - 2026-05-18
 
 ### Changed
