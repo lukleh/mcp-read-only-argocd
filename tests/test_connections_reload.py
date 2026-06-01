@@ -48,7 +48,6 @@ def make_runtime_paths(tmp_path: Path) -> RuntimePaths:
     """Create isolated runtime paths for reload tests."""
     runtime_paths = RuntimePaths(
         config_dir=tmp_path / "config",
-        state_dir=tmp_path / "state",
         cache_dir=tmp_path / "cache",
     )
     runtime_paths.ensure_directories()

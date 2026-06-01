@@ -5,13 +5,12 @@ This module provides:
 - get_repository: Get repository details
 """
 
-import json
 from collections.abc import Mapping
 
 from mcp.server.fastmcp import FastMCP
 
 from ..argocd_connector import ArgoCDConnector
-from ..validation import get_connector
+from ..validation import get_connector, render_tool_result
 
 
 def register_repository_tools(
@@ -37,8 +36,7 @@ def register_repository_tools(
             JSON string with list of repositories including URLs and connection status.
         """
         connector = get_connector(connectors, connection_name)
-        repos = await connector.list_repositories()
-        return json.dumps(repos, indent=2)
+        return await render_tool_result(connector.list_repositories())
 
     @mcp.tool()
     async def get_repository(connection_name: str, repo: str) -> str:
@@ -53,5 +51,4 @@ def register_repository_tools(
             JSON string with repository details including connection status and type.
         """
         connector = get_connector(connectors, connection_name)
-        repository = await connector.get_repository(repo)
-        return json.dumps(repository, indent=2)
+        return await render_tool_result(connector.get_repository(repo))

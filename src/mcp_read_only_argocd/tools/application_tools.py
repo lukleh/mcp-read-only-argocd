@@ -8,14 +8,13 @@ This module provides:
 - get_application_logs: Get application logs
 """
 
-import json
 from collections.abc import Mapping
 from typing import List
 
 from mcp.server.fastmcp import FastMCP
 
 from ..argocd_connector import ArgoCDConnector
-from ..validation import get_connector
+from ..validation import get_connector, render_tool_result
 
 
 def register_application_tools(
@@ -47,8 +46,9 @@ def register_application_tools(
             JSON string with list of applications.
         """
         connector = get_connector(connectors, connection_name)
-        apps = await connector.list_applications(projects=projects, selector=selector)
-        return json.dumps(apps, indent=2)
+        return await render_tool_result(
+            connector.list_applications(projects=projects, selector=selector)
+        )
 
     @mcp.tool()
     async def get_application(connection_name: str, name: str) -> str:
@@ -63,8 +63,7 @@ def register_application_tools(
             JSON string with application details including sync status, health, and spec.
         """
         connector = get_connector(connectors, connection_name)
-        app = await connector.get_application(name)
-        return json.dumps(app, indent=2)
+        return await render_tool_result(connector.get_application(name))
 
     @mcp.tool()
     async def get_application_resource_tree(connection_name: str, name: str) -> str:
@@ -81,8 +80,7 @@ def register_application_tools(
             JSON string with resource tree including nodes and their parent references.
         """
         connector = get_connector(connectors, connection_name)
-        tree = await connector.get_application_resource_tree(name)
-        return json.dumps(tree, indent=2)
+        return await render_tool_result(connector.get_application_resource_tree(name))
 
     @mcp.tool()
     async def get_application_managed_resources(
@@ -108,14 +106,15 @@ def register_application_tools(
             JSON string with list of managed resources.
         """
         connector = get_connector(connectors, connection_name)
-        resources = await connector.get_application_managed_resources(
-            name,
-            group=group,
-            kind=kind,
-            namespace=namespace,
-            resource_name=resource_name,
+        return await render_tool_result(
+            connector.get_application_managed_resources(
+                name,
+                group=group,
+                kind=kind,
+                namespace=namespace,
+                resource_name=resource_name,
+            )
         )
-        return json.dumps(resources, indent=2)
 
     @mcp.tool()
     async def get_application_logs(
@@ -143,12 +142,13 @@ def register_application_tools(
             JSON string with log entries.
         """
         connector = get_connector(connectors, connection_name)
-        logs = await connector.get_application_logs(
-            name,
-            namespace=namespace,
-            pod_name=pod_name,
-            container=container,
-            tail_lines=tail_lines,
-            since_seconds=since_seconds,
+        return await render_tool_result(
+            connector.get_application_logs(
+                name,
+                namespace=namespace,
+                pod_name=pod_name,
+                container=container,
+                tail_lines=tail_lines,
+                since_seconds=since_seconds,
+            )
         )
-        return json.dumps(logs, indent=2)

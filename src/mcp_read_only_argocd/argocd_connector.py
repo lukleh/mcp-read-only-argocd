@@ -3,6 +3,8 @@ import json
 import logging
 from typing import Any, Dict, List, NoReturn
 from urllib.parse import quote, unquote
+
+from .chrome_session import load_session_token_from_chrome
 from .config import ArgoCDConnection
 from .exceptions import (
     AuthenticationError,
@@ -22,12 +24,14 @@ class ArgoCDConnector:
         Set session_token in connections.yaml with the cookie value from
         your browser.
 
-    Credentials are reloaded from the active connection config and cached state before
-    each request to support token rotation without server restart.
+    Credentials are reloaded from the active connection config before each request
+    to support token rotation without server restart.
     """
 
     def __init__(self, connection: ArgoCDConnection):
         self.connection = connection
+        self._pending_session_token_persist: str | None = None
+        self._auth_recovery_message: str | None = None
         cookies = {"argocd.token": connection.session_token or ""}
 
         self.client = httpx.AsyncClient(
@@ -48,9 +52,74 @@ class ArgoCDConnector:
         return quote(value, safe="")
 
     def _refresh_credentials(self) -> None:
-        """Refresh credentials from active config and cached session state."""
+        """Refresh credentials from active config."""
         session_token = self.connection.reload_session_token()
         self.client.cookies.set("argocd.token", session_token)
+
+    def _refresh_session_token_from_browser(self) -> bool:
+        """Refresh a stale session token from Chrome for a retry."""
+        new_token = load_session_token_from_chrome(str(self.connection.url))
+        if not new_token:
+            self._auth_recovery_message = (
+                "Active session token was rejected with HTTP 401 and no matching "
+                "argocd.token was found in Chrome Profile 1."
+            )
+            return False
+
+        if new_token == self.connection.session_token:
+            self._auth_recovery_message = (
+                "Active session token was rejected with HTTP 401. Chrome Profile 1 "
+                "has the same argocd.token value, so there was no newer browser "
+                "token to retry."
+            )
+            logger.info(
+                "Chrome session token for %s matches the active token",
+                self.connection.connection_name,
+            )
+            return False
+
+        logger.info(
+            "Refreshing stale session token for %s from Chrome",
+            self.connection.connection_name,
+        )
+        self._set_session_token(new_token, persist=False)
+        self._pending_session_token_persist = new_token
+        self._auth_recovery_message = (
+            "Active session token was rejected with HTTP 401. A different "
+            "argocd.token from Chrome Profile 1 was retried, but Argo CD rejected "
+            "that browser token too."
+        )
+        return True
+
+    def _refresh_credentials_after_auth_failure(self, response: httpx.Response) -> bool:
+        """Try all non-interactive auth refresh sources after a 401 response."""
+        return (
+            self._check_and_update_session_cookie(
+                response,
+                persist=False,
+                persist_after_success=True,
+            )
+            or self._refresh_session_token_from_browser()
+        )
+
+    def _set_session_token(self, new_token: str, *, persist: bool) -> None:
+        """Update connection and client cookies for a new session token."""
+        self.connection.update_session_token(new_token, persist=persist)
+        self.client.cookies.set("argocd.token", new_token)
+
+    def _persist_pending_session_token(self) -> None:
+        """Persist a token that has already worked on a successful retry."""
+        if self._pending_session_token_persist != self.connection.session_token:
+            self._pending_session_token_persist = None
+            return
+
+        pending_token = self._pending_session_token_persist
+        self._pending_session_token_persist = None
+        if pending_token is None:
+            return
+
+        self.connection.update_session_token(pending_token, persist=True)
+        self._auth_recovery_message = None
 
     def _handle_response(self, response: httpx.Response) -> Dict[str, Any]:
         """Process a successful response: check cookie refresh, parse JSON.
@@ -61,7 +130,7 @@ class ArgoCDConnector:
         Returns:
             Parsed JSON response, or empty dict if no content
         """
-        self._check_and_update_session_cookie(response)
+        self._check_and_update_session_cookie(response, persist=True)
         if response.content:
             try:
                 return response.json()
@@ -124,8 +193,11 @@ class ArgoCDConnector:
         """
         if e.response.status_code == 401:
             # Attempt to capture any rotated cookie even on auth failures
-            self._check_and_update_session_cookie(e.response)
-            raise AuthenticationError(self.connection.connection_name)
+            self._check_and_update_session_cookie(e.response, persist=False)
+            raise AuthenticationError(
+                self.connection.connection_name,
+                self._auth_recovery_message or "Session may have expired.",
+            )
         elif e.response.status_code == 403:
             raise PermissionDeniedError(self.connection.connection_name, operation)
         else:
@@ -145,27 +217,66 @@ class ArgoCDConnector:
 
     async def _get(self, endpoint: str, **params) -> Dict[str, Any]:
         """Execute a GET request to Argo CD API."""
-        self._refresh_credentials()
-        try:
-            response = await self.client.get(f"/api/v1{endpoint}", params=params)
-            response.raise_for_status()
-            return self._handle_response(response)
-        except httpx.HTTPStatusError as e:
-            self._handle_http_error(e, "read")
-        except httpx.TimeoutException:
-            raise ArgoCDTimeoutError(
-                self.connection.timeout, self.connection.connection_name
-            )
-        except httpx.RequestError as e:
-            self._handle_request_error(e)
+        return await self._get_path(f"/api/v1{endpoint}", params)
 
-    def _check_and_update_session_cookie(self, response: httpx.Response) -> None:
+    async def _get_path(
+        self,
+        path: str,
+        params: dict[str, Any] | None = None,
+    ) -> Dict[str, Any]:
+        """Execute a GET request and retry once if Chrome has a fresh session."""
+        self._refresh_credentials()
+        attempted_auth_recovery = False
+
+        while True:
+            try:
+                result = await self._get_path_once(path, params)
+                self._persist_pending_session_token()
+                return result
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code == 401 and not attempted_auth_recovery:
+                    attempted_auth_recovery = True
+                    if self._refresh_credentials_after_auth_failure(e.response):
+                        continue
+
+                if (
+                    attempted_auth_recovery
+                    and e.response.status_code != 401
+                    and self._pending_session_token_persist is not None
+                ):
+                    self._persist_pending_session_token()
+
+                self._handle_http_error(e, "read")
+            except httpx.TimeoutException:
+                raise ArgoCDTimeoutError(
+                    self.connection.timeout, self.connection.connection_name
+                )
+            except httpx.RequestError as e:
+                self._handle_request_error(e)
+
+    async def _get_path_once(
+        self,
+        path: str,
+        params: dict[str, Any] | None = None,
+    ) -> Dict[str, Any]:
+        """Execute a single GET request without auth recovery."""
+        response = await self.client.get(path, params=params or {})
+        response.raise_for_status()
+        return self._handle_response(response)
+
+    def _check_and_update_session_cookie(
+        self,
+        response: httpx.Response,
+        *,
+        persist: bool = True,
+        persist_after_success: bool = False,
+    ) -> bool:
         """
         Check response headers for refreshed session cookie and update if found.
         Argo CD may rotate session tokens via Set-Cookie headers.
         """
         if not self.connection.session_token:
-            return
+            return False
 
         # Look for Set-Cookie headers
         set_cookie_headers = response.headers.get_list("set-cookie")
@@ -189,15 +300,15 @@ class ArgoCDConnector:
                                 self.connection.connection_name,
                             )
 
-                            # Update in memory and persist to cached state
-                            self.connection.update_session_token(
-                                new_token, persist=True
-                            )
+                            self._set_session_token(new_token, persist=persist)
+                            if persist_after_success:
+                                self._pending_session_token_persist = new_token
 
-                            # Update httpx client cookies
-                            self.client.cookies.set("argocd.token", new_token)
+                            return True
 
                         break
+
+        return False
 
     # ==================== Applications API ====================
 
@@ -406,16 +517,4 @@ class ArgoCDConnector:
             Version information
         """
         # Version endpoint doesn't have /v1 prefix
-        self._refresh_credentials()
-        try:
-            response = await self.client.get("/api/version")
-            response.raise_for_status()
-            return self._handle_response(response)
-        except httpx.HTTPStatusError as e:
-            self._handle_http_error(e, "read")
-        except httpx.TimeoutException:
-            raise ArgoCDTimeoutError(
-                self.connection.timeout, self.connection.connection_name
-            )
-        except httpx.RequestError as e:
-            self._handle_request_error(e)
+        return await self._get_path("/api/version")

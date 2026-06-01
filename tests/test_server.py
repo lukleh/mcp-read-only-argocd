@@ -22,10 +22,8 @@ def test_write_sample_config_creates_runtime_dirs_and_file(tmp_path, monkeypatch
     )
 
     config_dir = tmp_path / "config"
-    state_dir = tmp_path / "state"
     cache_dir = tmp_path / "cache"
     monkeypatch.setenv("MCP_READ_ONLY_ARGOCD_CONFIG_DIR", str(config_dir))
-    monkeypatch.setenv("MCP_READ_ONLY_ARGOCD_STATE_DIR", str(state_dir))
     monkeypatch.setenv("MCP_READ_ONLY_ARGOCD_CACHE_DIR", str(cache_dir))
 
     runtime_paths = resolve_runtime_paths()
@@ -33,7 +31,6 @@ def test_write_sample_config_creates_runtime_dirs_and_file(tmp_path, monkeypatch
 
     assert written_path == runtime_paths.connections_file
     assert runtime_paths.config_dir.is_dir()
-    assert runtime_paths.state_dir.is_dir()
     assert runtime_paths.cache_dir.is_dir()
     assert written_path.read_text(encoding="utf-8") == SAMPLE_CONNECTIONS_YAML
 
@@ -54,7 +51,6 @@ def test_write_sample_config_requires_overwrite_to_replace(tmp_path):
 
     runtime_paths = RuntimePaths(
         config_dir=tmp_path / "config",
-        state_dir=tmp_path / "state",
         cache_dir=tmp_path / "cache",
     )
     runtime_paths.ensure_directories()
@@ -76,7 +72,6 @@ def test_write_sample_config_overwrite_replaces_existing_file(tmp_path):
 
     runtime_paths = RuntimePaths(
         config_dir=tmp_path / "config",
-        state_dir=tmp_path / "state",
         cache_dir=tmp_path / "cache",
     )
     runtime_paths.ensure_directories()
@@ -101,7 +96,6 @@ def test_main_write_sample_config_and_print_paths_together(
     from mcp_read_only_argocd import server
 
     config_dir = tmp_path / "config"
-    state_dir = tmp_path / "state"
     cache_dir = tmp_path / "cache"
 
     monkeypatch.setattr(
@@ -111,8 +105,6 @@ def test_main_write_sample_config_and_print_paths_together(
             "mcp-read-only-argocd",
             "--config-dir",
             str(config_dir),
-            "--state-dir",
-            str(state_dir),
             "--cache-dir",
             str(cache_dir),
             "--write-sample-config",
@@ -133,9 +125,29 @@ def test_main_write_sample_config_and_print_paths_together(
 
     assert f"Wrote sample config to {config_dir / 'connections.yaml'}" in output
     assert f"config_dir={config_dir}" in output
-    assert f"state_dir={state_dir}" in output
     assert f"cache_dir={cache_dir}" in output
     assert f"connections_file={config_dir / 'connections.yaml'}" in output
+
+
+def test_main_rejects_removed_state_dir_arg(monkeypatch):
+    """state-dir should be fully removed because connections.yaml is the token store."""
+    import sys
+
+    from mcp_read_only_argocd import server
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "mcp-read-only-argocd",
+            "--state-dir",
+            "/tmp/ignored",
+            "--print-paths",
+        ],
+    )
+
+    with pytest.raises(SystemExit):
+        server.main()
 
 
 def test_main_rejects_overwrite_without_write_sample_config(monkeypatch):

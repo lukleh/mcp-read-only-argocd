@@ -38,4 +38,4 @@
 # - Connection names should use only letters, numbers, underscores, and hyphens
 # - URLs should not include trailing slashes
 # - Changes to this file are detected before tool calls, without restarting the MCP
-# - If both sources contain a token, the persisted session state wins until you update or remove it
+# - Refreshed browser session tokens are written back to this file after a successful retry

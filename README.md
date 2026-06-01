@@ -9,7 +9,6 @@ A secure MCP (Model Context Protocol) server that provides read-only access to A
 > Default layout:
 > - Config: `~/.config/lukleh/mcp-read-only-argocd/connections.yaml`
 > - Credentials: stored in `connections.yaml`
-> - Rotated session state: `~/.local/state/lukleh/mcp-read-only-argocd/session_tokens.json`
 > - Cache: `~/.cache/lukleh/mcp-read-only-argocd/`
 
 ## Features
@@ -17,7 +16,8 @@ A secure MCP (Model Context Protocol) server that provides read-only access to A
 - Read-only by design: only read operations are exposed
 - Session cookie authentication: uses your existing `argocd.token` browser session
 - Multi-instance support: connect to multiple Argo CD instances at once
-- Automatic cookie rotation: refreshed session cookies are persisted to local state
+- Automatic cookie rotation: refreshed session cookies are persisted to `connections.yaml`
+- Stale token recovery: a 401 response triggers a one-time Chrome cookie refresh and retry
 - Package-native runtime paths: no repository checkout required for normal use
 
 ## Why Session Cookies?
@@ -86,13 +86,15 @@ Edit `~/.config/lukleh/mcp-read-only-argocd/connections.yaml`:
 ### 5. Store the Session Cookie
 
 Put the cookie value in the `session_token` field for each connection in
-`~/.config/lukleh/mcp-read-only-argocd/connections.yaml`. The server persists
-rotated session cookies to
-`~/.local/state/lukleh/mcp-read-only-argocd/session_tokens.json`, keyed by
-`connection_name`. The server detects changes to `connections.yaml` before tool
-calls, so editing this file does not require an MCP restart. If both
-`connections.yaml` and the state file contain a token for the same connection,
-the persisted state file wins until you update or remove it.
+`~/.config/lukleh/mcp-read-only-argocd/connections.yaml`. The server detects
+changes to `connections.yaml` before tool calls, so editing this file does not
+require an MCP restart.
+
+If Argo CD rejects the active token with a 401 response, the server tries once to
+load a fresh `argocd.token` from Chrome Profile 1 for the matching connection
+domain. When that token differs from the active token, the failed request is
+retried once. If the retry succeeds, the fresh token is written back to
+`connections.yaml`.
 
 ### 6. Configure Your MCP Client
 
@@ -134,7 +136,7 @@ List all applications in the staging Argo CD instance.
 
 Fields:
 
-- `connection_name`: unique identifier used in tool calls and rotated session state
+- `connection_name`: unique identifier used in tool calls and token refreshes
 - `url`: Argo CD base URL
 - `description`: optional human-readable description
 - `session_token`: Argo CD `argocd.token` browser cookie
@@ -144,7 +146,6 @@ Fields:
 Runtime path override environment variables:
 
 - `MCP_READ_ONLY_ARGOCD_CONFIG_DIR`
-- `MCP_READ_ONLY_ARGOCD_STATE_DIR`
 - `MCP_READ_ONLY_ARGOCD_CACHE_DIR`
 
 ## Command Line Testing

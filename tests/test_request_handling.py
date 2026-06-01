@@ -1,11 +1,14 @@
 """Tests for request handling edge cases in ArgoCDConnector."""
 
+import json
+
 import httpx
 import pytest
 
 from mcp_read_only_argocd.argocd_connector import ArgoCDConnector
 from mcp_read_only_argocd.config import ArgoCDConnection
-from mcp_read_only_argocd.exceptions import ArgoCDAPIError
+from mcp_read_only_argocd.exceptions import ArgoCDAPIError, AuthenticationError
+from mcp_read_only_argocd.validation import render_tool_result
 
 
 def create_mock_connector(connection, handler):
@@ -80,3 +83,16 @@ async def test_get_wraps_request_errors(connection):
     await connector.client.aclose()
     assert excinfo.value.status_code == 0
     assert "connection refused" in excinfo.value.message
+
+
+@pytest.mark.asyncio
+async def test_render_tool_result_returns_authentication_errors_as_json():
+    async def raises_authentication_error():
+        raise AuthenticationError("test", "Chrome token was also rejected.")
+
+    result = await render_tool_result(raises_authentication_error())
+    payload = json.loads(result)
+
+    assert payload["error"] == "authentication_failed"
+    assert payload["connection_name"] == "test"
+    assert "Chrome token was also rejected" in payload["message"]

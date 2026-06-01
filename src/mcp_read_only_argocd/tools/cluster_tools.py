@@ -5,13 +5,12 @@ This module provides:
 - get_cluster: Get cluster details
 """
 
-import json
 from collections.abc import Mapping
 
 from mcp.server.fastmcp import FastMCP
 
 from ..argocd_connector import ArgoCDConnector
-from ..validation import get_connector
+from ..validation import get_connector, render_tool_result
 
 
 def register_cluster_tools(
@@ -37,8 +36,7 @@ def register_cluster_tools(
             JSON string with list of clusters including server URLs and connection status.
         """
         connector = get_connector(connectors, connection_name)
-        clusters = await connector.list_clusters()
-        return json.dumps(clusters, indent=2)
+        return await render_tool_result(connector.list_clusters())
 
     @mcp.tool()
     async def get_cluster(connection_name: str, server: str) -> str:
@@ -53,5 +51,4 @@ def register_cluster_tools(
             JSON string with cluster details including connection info and namespaces.
         """
         connector = get_connector(connectors, connection_name)
-        cluster = await connector.get_cluster(server)
-        return json.dumps(cluster, indent=2)
+        return await render_tool_result(connector.get_cluster(server))

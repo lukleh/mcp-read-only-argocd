@@ -245,7 +245,6 @@ async def test_connection(connector: ArgoCDConnector, connection_name: str) -> b
 async def main(
     connection_filter: str | None = None,
     config_dir: str | None = None,
-    state_dir: str | None = None,
     cache_dir: str | None = None,
     print_paths: bool = False,
 ):
@@ -255,7 +254,6 @@ async def main(
 
     runtime_paths = resolve_runtime_paths(
         config_dir=config_dir,
-        state_dir=state_dir,
         cache_dir=cache_dir,
     )
 
@@ -273,10 +271,7 @@ async def main(
         return False
 
     try:
-        parser = ConfigParser(
-            runtime_paths.connections_file,
-            state_path=runtime_paths.state_file,
-        )
+        parser = ConfigParser(runtime_paths.connections_file)
         connections = parser.load_config()
     except Exception as e:
         print(f"\n✗ Failed to load configuration: {e}")
@@ -332,17 +327,13 @@ if __name__ == "__main__":
         help="Directory containing connections.yaml",
     )
     arg_parser.add_argument(
-        "--state-dir",
-        help="Directory containing session_tokens.json",
-    )
-    arg_parser.add_argument(
         "--cache-dir",
         help="Directory reserved for cache files",
     )
     arg_parser.add_argument(
         "--print-paths",
         action="store_true",
-        help="Print resolved config/state/cache paths and exit",
+        help="Print resolved config/cache paths and exit",
     )
     args = arg_parser.parse_args()
 
@@ -350,7 +341,6 @@ if __name__ == "__main__":
         main(
             args.connection,
             config_dir=args.config_dir,
-            state_dir=args.state_dir,
             cache_dir=args.cache_dir,
             print_paths=args.print_paths,
         )

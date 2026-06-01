@@ -112,7 +112,7 @@ SAMPLE_CONNECTIONS_YAML = dedent("""
     # - Connection names should use only letters, numbers, underscores, and hyphens
     # - URLs should not include trailing slashes
     # - Changes to this file are detected before tool calls, without restarting the MCP
-    # - If both sources contain a token, the persisted session state wins until you update or remove it
+    # - Refreshed browser session tokens are written back to this file after a successful retry
     """).lstrip()
 
 
@@ -199,7 +199,6 @@ class ReadOnlyArgoCDServer:
         yaml_text, marker = self._read_connections_config_snapshot()
         parser = ConfigParser(
             self.runtime_paths.connections_file,
-            state_path=self.runtime_paths.state_file,
         )
         loaded_connections = parser.load_config_from_text(yaml_text)
         built_connections: dict[str, ArgoCDConnection] = {}
@@ -350,17 +349,13 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help="Directory containing connections.yaml",
     )
     parser.add_argument(
-        "--state-dir",
-        help="Directory containing session_tokens.json",
-    )
-    parser.add_argument(
         "--cache-dir",
         help="Directory reserved for cache files",
     )
     parser.add_argument(
         "--print-paths",
         action="store_true",
-        help="Print resolved config/state/cache paths and exit",
+        help="Print resolved config/cache paths and exit",
     )
     parser.add_argument(
         "--write-sample-config",
@@ -384,7 +379,6 @@ def main() -> None:
 
     runtime_paths = resolve_runtime_paths(
         config_dir=args.config_dir,
-        state_dir=args.state_dir,
         cache_dir=args.cache_dir,
     )
 
