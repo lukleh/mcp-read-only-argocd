@@ -7,6 +7,33 @@ and this project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-08-03
+
+### Changed
+
+- Ported the server to MCP Python SDK 2.x: `mcp.server.fastmcp.FastMCP` is now
+  `mcp.server.mcpserver.MCPServer`, and `mcp.server.fastmcp.exceptions.ToolError`
+  is now `mcp.server.mcpserver.exceptions.ToolError`. `mcp.server.mcpserver`
+  mirrors the removed `fastmcp` package, so the tool registration API
+  (`@mcp.tool()`, type-hint-derived schemas) and the `run()` entry point are
+  unchanged. Not everything moved cleanly, though: `ToolManager.call_tool()`
+  now takes the request `Context` as a required positional argument (it was
+  optional in 1.x), so the shared test helper in `tests/test_connections_reload.py`
+  builds one the same way `MCPServer.call_tool` does
+  (`Context(mcp_server=..., subscriptions=...)`). That change is test-only;
+  tool behaviour and assertions are unchanged.
+  The 14 tools' `tools/list` output — names, descriptions, input schemas and
+  output schemas — is byte-identical to the 0.3.1 output.
+- Replaced the `mcp>=1.10.0,<2` pin with `mcp>=2.0.0,<3`. The cap is kept
+  because 2.0.0 removed `mcp.server.fastmcp` with no compatibility shim, so an
+  unbounded pin lets the next major SDK rewrite break fresh installs the same
+  way. SDK 2.0.0 requires Python >=3.10; this package already requires >=3.11,
+  so the supported Python range is unaffected.
+- `serverInfo.version` in the `initialize` response now reports this package's
+  version (`0.4.0`) instead of the MCP SDK's version. Under FastMCP the field
+  was populated from the SDK release (0.3.1 advertised `1.29.0`); SDK 2 defaults
+  it to an empty string, and the server now passes its own version explicitly.
+
 ## [0.3.1] - 2026-08-03
 
 ### Fixed

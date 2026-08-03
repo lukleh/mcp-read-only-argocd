@@ -7,7 +7,8 @@ from pathlib import Path
 
 import pytest
 import yaml
-from mcp.server.fastmcp.exceptions import ToolError
+from mcp.server.mcpserver import Context
+from mcp.server.mcpserver.exceptions import ToolError
 
 import mcp_read_only_argocd.server as server_module
 from mcp_read_only_argocd.runtime_paths import RuntimePaths
@@ -67,10 +68,19 @@ async def call_tool(
     tool_name: str,
     arguments: dict[str, object] | None = None,
 ):
-    """Call a FastMCP tool directly on the in-process server."""
+    """Call an MCPServer tool directly on the in-process server."""
+    # SDK 2 made the tool context a required argument on the tool manager.
+    # Build it the same way MCPServer.call_tool does; the public wrapper is not
+    # usable here because it forces convert_result=True and these tests assert
+    # on the tools' raw return values.
+    context = Context(
+        mcp_server=server.mcp,
+        subscriptions=server.mcp._subscriptions,
+    )
     return await server.mcp._tool_manager.call_tool(
         tool_name,
         arguments or {},
+        context,
         convert_result=False,
     )
 

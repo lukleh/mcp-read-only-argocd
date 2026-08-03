@@ -9,7 +9,7 @@ This module provides:
 import json
 from collections.abc import Mapping
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
 from ..config import ArgoCDConnection
 from ..argocd_connector import ArgoCDConnector
@@ -17,14 +17,14 @@ from ..validation import get_connector, render_tool_result
 
 
 def register_core_tools(
-    mcp: FastMCP,
+    mcp: MCPServer,
     connectors: Mapping[str, ArgoCDConnector],
     connections: Mapping[str, ArgoCDConnection],
 ) -> None:
     """Register core MCP tools for connection management.
 
     Args:
-        mcp: FastMCP server instance
+        mcp: MCPServer instance
         connectors: Dictionary mapping connection names to ArgoCDConnector instances
         connections: Dictionary mapping connection names to ArgoCDConnection configs
     """
