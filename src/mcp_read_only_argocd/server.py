@@ -15,8 +15,9 @@ from pathlib import Path
 from textwrap import dedent
 from typing import TypeVar
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
+from . import __version__
 from .argocd_connector import ArgoCDConnector
 from .config import ArgoCDConnection, ConfigParser
 from .runtime_paths import resolve_runtime_paths, RuntimePaths
@@ -117,7 +118,7 @@ SAMPLE_CONNECTIONS_YAML = dedent("""
 
 
 class ReadOnlyArgoCDServer:
-    """MCP Read-Only Argo CD Server using FastMCP."""
+    """MCP Read-Only Argo CD Server using MCPServer."""
 
     def __init__(self, runtime_paths: RuntimePaths):
         self.runtime_paths = runtime_paths
@@ -134,7 +135,7 @@ class ReadOnlyArgoCDServer:
             lambda: self._connectors,
         )
 
-        self.mcp = FastMCP("mcp-read-only-argocd")
+        self.mcp = MCPServer("mcp-read-only-argocd", version=__version__)
 
         self._load_connections()
         self._register_tools()

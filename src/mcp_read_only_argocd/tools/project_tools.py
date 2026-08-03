@@ -7,20 +7,20 @@ This module provides:
 
 from collections.abc import Mapping
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
 from ..argocd_connector import ArgoCDConnector
 from ..validation import get_connector, render_tool_result
 
 
 def register_project_tools(
-    mcp: FastMCP,
+    mcp: MCPServer,
     connectors: Mapping[str, ArgoCDConnector],
 ) -> None:
     """Register project MCP tools.
 
     Args:
-        mcp: FastMCP server instance
+        mcp: MCPServer server instance
         connectors: Dictionary mapping connection names to ArgoCDConnector instances
     """
 
