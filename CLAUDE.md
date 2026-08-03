@@ -25,8 +25,7 @@ uv run python smoke_test.py
 # Smoke test a specific connection
 uv run python smoke_test.py --connection staging
 
-# Code formatting
-uv run black src/mcp_read_only_argocd/
+# Linting
 uv run ruff check src/mcp_read_only_argocd/ tests/ smoke_test.py
 
 # Run tests

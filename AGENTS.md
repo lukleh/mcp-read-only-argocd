@@ -10,7 +10,7 @@
 - `uv run pytest -q` runs the full test suite.
 - `uv run pytest tests/test_server.py -q` runs a focused test module while iterating.
 - `uv run python smoke_test.py --connection staging` exercises one configured connection end to end.
-- `uv run ruff check src tests smoke_test.py` runs linting, and `uv run black src tests smoke_test.py` formats the repo.
+- `uv run ruff check src tests smoke_test.py` runs linting.
 - `uv run ty check` runs the type checker on `src/`.
 
 ## Coding Style & Naming Conventions
