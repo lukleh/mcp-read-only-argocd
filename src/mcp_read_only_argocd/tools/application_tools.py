@@ -24,7 +24,7 @@ def register_application_tools(
     """Register application MCP tools.
 
     Args:
-        mcp: MCPServer server instance
+        mcp: MCPServer instance
         connectors: Dictionary mapping connection names to ArgoCDConnector instances
     """
 

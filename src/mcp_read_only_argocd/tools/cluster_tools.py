@@ -20,7 +20,7 @@ def register_cluster_tools(
     """Register cluster MCP tools.
 
     Args:
-        mcp: MCPServer server instance
+        mcp: MCPServer instance
         connectors: Dictionary mapping connection names to ArgoCDConnector instances
     """
 

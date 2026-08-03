@@ -16,7 +16,12 @@ and this project aims to follow [Semantic Versioning](https://semver.org/).
   is now `mcp.server.mcpserver.exceptions.ToolError`. `mcp.server.mcpserver`
   mirrors the removed `fastmcp` package, so the tool registration API
   (`@mcp.tool()`, type-hint-derived schemas) and the `run()` entry point are
-  unchanged.
+  unchanged. Not everything moved cleanly, though: `ToolManager.call_tool()`
+  now takes the request `Context` as a required positional argument (it was
+  optional in 1.x), so the shared test helper in `tests/test_connections_reload.py`
+  builds one the same way `MCPServer.call_tool` does
+  (`Context(mcp_server=..., subscriptions=...)`). That change is test-only;
+  tool behaviour and assertions are unchanged.
   The 14 tools' `tools/list` output — names, descriptions, input schemas and
   output schemas — is byte-identical to the 0.3.1 output.
 - Replaced the `mcp>=1.10.0,<2` pin with `mcp>=2.0.0,<3`. The cap is kept

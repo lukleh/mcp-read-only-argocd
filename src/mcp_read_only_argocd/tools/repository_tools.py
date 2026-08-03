@@ -20,7 +20,7 @@ def register_repository_tools(
     """Register repository MCP tools.
 
     Args:
-        mcp: MCPServer server instance
+        mcp: MCPServer instance
         connectors: Dictionary mapping connection names to ArgoCDConnector instances
     """
 
