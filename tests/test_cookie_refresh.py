@@ -5,8 +5,7 @@ import pytest
 import yaml
 
 from mcp_read_only_argocd.argocd_connector import ArgoCDConnector
-from mcp_read_only_argocd.config import ArgoCDConnection
-from mcp_read_only_argocd.config import ConfigParser
+from mcp_read_only_argocd.config import ArgoCDConnection, ConfigParser
 from mcp_read_only_argocd.exceptions import AuthenticationError, PermissionDeniedError
 
 

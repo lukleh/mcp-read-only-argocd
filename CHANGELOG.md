@@ -9,11 +9,14 @@ and this project aims to follow [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
-- Dev tooling: pinned the ruff rule set explicitly (`select = ["E4", "E7",
-  "E9", "F"]`, the implicit defaults of the locked ruff 0.15.10) so a future
-  relock to ruff 0.16+ — which widened the implicit defaults — cannot change
-  lint coverage silently, and removed the `black` dev dependency (it was
-  enforced by no CI step or release gate).
+- Dev tooling: adopted ruff 0.16's widened default rule set, with ruff capped
+  to the 0.16 minor (`ruff>=0.16,<0.17`) so relocks cannot change lint
+  behavior silently. `BLE001` and `TRY004` are deliberately ignored (broad
+  excepts at MCP tool boundaries and raised exception types are API design,
+  not lint debt). Code modernized accordingly: PEP 585/604 annotations,
+  sorted imports, and other mechanical autofixes; no behavior changes. Also
+  removed the `black` dev dependency (it was enforced by no CI step or
+  release gate).
 
 ## [0.4.0] - 2026-08-03
 

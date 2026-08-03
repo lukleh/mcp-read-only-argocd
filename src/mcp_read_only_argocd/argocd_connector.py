@@ -1,15 +1,16 @@
-import httpx
 import json
 import logging
-from typing import Any, Dict, List, NoReturn
+from typing import Any, NoReturn
 from urllib.parse import quote, unquote
+
+import httpx
 
 from .chrome_session import load_session_token_from_chrome
 from .config import ArgoCDConnection
 from .exceptions import (
-    AuthenticationError,
     ArgoCDAPIError,
     ArgoCDTimeoutError,
+    AuthenticationError,
     PermissionDeniedError,
 )
 
@@ -121,7 +122,7 @@ class ArgoCDConnector:
         self.connection.update_session_token(pending_token, persist=True)
         self._auth_recovery_message = None
 
-    def _handle_response(self, response: httpx.Response) -> Dict[str, Any]:
+    def _handle_response(self, response: httpx.Response) -> dict[str, Any]:
         """Process a successful response: check cookie refresh, parse JSON.
 
         Args:
@@ -151,7 +152,7 @@ class ArgoCDConnector:
                     except json.JSONDecodeError:
                         items.append({"line": line})
 
-                lines: List[str] = []
+                lines: list[str] = []
                 for item in items:
                     if not isinstance(item, dict):
                         continue
@@ -171,7 +172,7 @@ class ArgoCDConnector:
                     if isinstance(content, str):
                         lines.append(content)
 
-                payload: Dict[str, Any] = {"items": items}
+                payload: dict[str, Any] = {"items": items}
                 if lines and len(lines) == len(items):
                     payload["lines"] = lines
                 return payload
@@ -215,7 +216,7 @@ class ArgoCDConnector:
             self.connection.connection_name,
         )
 
-    async def _get(self, endpoint: str, **params) -> Dict[str, Any]:
+    async def _get(self, endpoint: str, **params) -> dict[str, Any]:
         """Execute a GET request to Argo CD API."""
         return await self._get_path(f"/api/v1{endpoint}", params)
 
@@ -223,7 +224,7 @@ class ArgoCDConnector:
         self,
         path: str,
         params: dict[str, Any] | None = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Execute a GET request and retry once if Chrome has a fresh session."""
         self._refresh_credentials()
         attempted_auth_recovery = False
@@ -258,7 +259,7 @@ class ArgoCDConnector:
         self,
         path: str,
         params: dict[str, Any] | None = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Execute a single GET request without auth recovery."""
         response = await self.client.get(path, params=params or {})
         response.raise_for_status()
@@ -314,9 +315,9 @@ class ArgoCDConnector:
 
     async def list_applications(
         self,
-        projects: List[str] | None = None,
+        projects: list[str] | None = None,
         selector: str | None = None,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """List all applications.
 
         Args:
@@ -335,7 +336,7 @@ class ArgoCDConnector:
         result = await self._get("/applications", **params)
         return result.get("items", [])
 
-    async def get_application(self, name: str) -> Dict[str, Any]:
+    async def get_application(self, name: str) -> dict[str, Any]:
         """Get application details by name.
 
         Args:
@@ -347,7 +348,7 @@ class ArgoCDConnector:
         encoded_name = self._quote_path_segment(name)
         return await self._get(f"/applications/{encoded_name}")
 
-    async def get_application_resource_tree(self, name: str) -> Dict[str, Any]:
+    async def get_application_resource_tree(self, name: str) -> dict[str, Any]:
         """Get the resource tree for an application.
 
         Args:
@@ -366,7 +367,7 @@ class ArgoCDConnector:
         kind: str | None = None,
         namespace: str | None = None,
         resource_name: str | None = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Get managed resources for an application.
 
         Args:
@@ -402,7 +403,7 @@ class ArgoCDConnector:
         container: str | None = None,
         tail_lines: int | None = None,
         since_seconds: int | None = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Get logs for an application's pods.
 
         Args:
@@ -433,7 +434,7 @@ class ArgoCDConnector:
 
     # ==================== Projects API ====================
 
-    async def list_projects(self) -> List[Dict[str, Any]]:
+    async def list_projects(self) -> list[dict[str, Any]]:
         """List all projects.
 
         Returns:
@@ -442,7 +443,7 @@ class ArgoCDConnector:
         result = await self._get("/projects")
         return result.get("items", [])
 
-    async def get_project(self, name: str) -> Dict[str, Any]:
+    async def get_project(self, name: str) -> dict[str, Any]:
         """Get project details by name.
 
         Args:
@@ -456,7 +457,7 @@ class ArgoCDConnector:
 
     # ==================== Clusters API ====================
 
-    async def list_clusters(self) -> List[Dict[str, Any]]:
+    async def list_clusters(self) -> list[dict[str, Any]]:
         """List all registered clusters.
 
         Returns:
@@ -465,7 +466,7 @@ class ArgoCDConnector:
         result = await self._get("/clusters")
         return result.get("items", [])
 
-    async def get_cluster(self, server: str) -> Dict[str, Any]:
+    async def get_cluster(self, server: str) -> dict[str, Any]:
         """Get cluster details by server URL.
 
         Args:
@@ -479,7 +480,7 @@ class ArgoCDConnector:
 
     # ==================== Repositories API ====================
 
-    async def list_repositories(self) -> List[Dict[str, Any]]:
+    async def list_repositories(self) -> list[dict[str, Any]]:
         """List all configured repositories.
 
         Returns:
@@ -488,7 +489,7 @@ class ArgoCDConnector:
         result = await self._get("/repositories")
         return result.get("items", [])
 
-    async def get_repository(self, repo: str) -> Dict[str, Any]:
+    async def get_repository(self, repo: str) -> dict[str, Any]:
         """Get repository details by URL.
 
         Args:
@@ -502,7 +503,7 @@ class ArgoCDConnector:
 
     # ==================== Settings/Version API ====================
 
-    async def get_settings(self) -> Dict[str, Any]:
+    async def get_settings(self) -> dict[str, Any]:
         """Get Argo CD settings.
 
         Returns:
@@ -510,7 +511,7 @@ class ArgoCDConnector:
         """
         return await self._get("/settings")
 
-    async def get_version(self) -> Dict[str, Any]:
+    async def get_version(self) -> dict[str, Any]:
         """Get Argo CD version information.
 
         Returns:
