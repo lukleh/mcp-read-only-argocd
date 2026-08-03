@@ -7,6 +7,17 @@ and this project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- Dev tooling: adopted ruff 0.16's widened default rule set, with ruff capped
+  to the 0.16 minor (`ruff>=0.16,<0.17`) so relocks cannot change lint
+  behavior silently. `BLE001` and `TRY004` are deliberately ignored (broad
+  excepts at MCP tool boundaries and raised exception types are API design,
+  not lint debt). Code modernized accordingly: PEP 585/604 annotations,
+  sorted imports, and other mechanical autofixes; no behavior changes. Also
+  removed the `black` dev dependency (it was enforced by no CI step or
+  release gate).
+
 ## [0.4.0] - 2026-08-03
 
 ### Changed

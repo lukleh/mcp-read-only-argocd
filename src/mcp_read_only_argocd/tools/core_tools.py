@@ -11,8 +11,8 @@ from collections.abc import Mapping
 
 from mcp.server.mcpserver import MCPServer
 
-from ..config import ArgoCDConnection
 from ..argocd_connector import ArgoCDConnector
+from ..config import ArgoCDConnection
 from ..validation import get_connector, render_tool_result
 
 

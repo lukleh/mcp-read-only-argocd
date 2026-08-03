@@ -12,13 +12,11 @@ Exception Hierarchy:
     └── ArgoCDTimeoutError - Request timeout
 """
 
-from typing import List
 
 
 class ArgoCDError(Exception):
     """Base exception for all Argo CD-related errors."""
 
-    pass
 
 
 class ConnectionNotFoundError(ArgoCDError):
@@ -29,7 +27,7 @@ class ConnectionNotFoundError(ArgoCDError):
         available: List of valid connection names.
     """
 
-    def __init__(self, connection_name: str, available: List[str]):
+    def __init__(self, connection_name: str, available: list[str]):
         self.connection_name = connection_name
         self.available = available
         available_str = ", ".join(available) if available else "(none configured)"

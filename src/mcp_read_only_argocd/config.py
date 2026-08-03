@@ -70,7 +70,8 @@ class ArgoCDConnection(BaseModel):
     _config_path: Path | None = PrivateAttr(default=None)
     _configured_session_token: str | None = PrivateAttr(default=None)
 
-    def model_post_init(self, __context: Any) -> None:
+    # pydantic's documented hook signature uses a dunder-named parameter
+    def model_post_init(self, __context: Any) -> None:  # noqa: PYI063
         """Preserve the session token explicitly declared in YAML config."""
         self._configured_session_token = self.session_token
 

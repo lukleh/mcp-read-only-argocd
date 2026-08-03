@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 
-import mcp_read_only_argocd.chrome_session as chrome_session
+from mcp_read_only_argocd import chrome_session
 
 
 def test_extract_connection_domain_from_url():

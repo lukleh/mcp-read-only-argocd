@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 MCP Read-Only Argo CD Server
 Provides secure read-only access to Argo CD instances via MCP protocol.
@@ -20,7 +19,7 @@ from mcp.server.mcpserver import MCPServer
 from . import __version__
 from .argocd_connector import ArgoCDConnector
 from .config import ArgoCDConnection, ConfigParser
-from .runtime_paths import resolve_runtime_paths, RuntimePaths
+from .runtime_paths import RuntimePaths, resolve_runtime_paths
 from .tools import (
     register_application_tools,
     register_cluster_tools,

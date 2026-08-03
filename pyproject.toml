@@ -42,8 +42,10 @@ dev = [
     "pytest>=7.0.0",
     "pytest-timeout>=2.2.0",
     "pytest-asyncio>=0.21.0",
-    "black>=23.0.0",
-    "ruff>=0.1.0",
+    # Cap ruff to one minor: the implicit default rule set changes between
+    # minors (0.16 widened it), so a routine relock must not change lint
+    # behavior. Bumping the cap is a deliberate, separate change.
+    "ruff>=0.16,<0.17",
     "ty>=0.0.28",
     "vulture>=2.16",
 ]
@@ -57,6 +59,15 @@ mcp-read-only-argocd = "mcp_read_only_argocd.server:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/mcp_read_only_argocd"]
+
+[tool.ruff.lint]
+# The tree follows ruff 0.16's implicit default rule set (deterministic
+# because the dev extra caps ruff to the 0.16 minor). Deliberate opt-outs:
+#   BLE001 - broad `except Exception` at the MCP tool boundary is this
+#            server's design; exceptions propagate to the framework
+#   TRY004 - raised exception types are observable API behavior; changing
+#            them is out of scope for lint
+ignore = ["BLE001", "TRY004"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

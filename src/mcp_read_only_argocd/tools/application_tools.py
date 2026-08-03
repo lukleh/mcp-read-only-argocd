@@ -9,7 +9,6 @@ This module provides:
 """
 
 from collections.abc import Mapping
-from typing import List
 
 from mcp.server.mcpserver import MCPServer
 
@@ -31,7 +30,7 @@ def register_application_tools(
     @mcp.tool()
     async def list_applications(
         connection_name: str,
-        projects: List[str] | None = None,
+        projects: list[str] | None = None,
         selector: str | None = None,
     ) -> str:
         """
