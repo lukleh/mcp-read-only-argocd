@@ -47,11 +47,20 @@ uv run pytest
 - Session token state is keyed by `connection_name`
 - **Dynamic token reloading**: the server hot-reloads changed YAML before tool calls, and `reload_session_token()` overlays persisted session cache on every request
 
+**src/mcp_read_only_argocd/chrome_session.py** - Browser cookie loader
+- `load_session_token_from_chrome(url)` reads the `argocd.token` cookie matching a connection's
+  host out of the local Chrome cookie store (`Profile 1` by default)
+- This is what makes the "browser session cookie" authentication in the overview work; it is the
+  non-interactive recovery source when the configured token has gone stale
+
 **src/mcp_read_only_argocd/argocd_connector.py** - Argo CD API client
 - `ArgoCDConnector` wraps httpx for Argo CD API calls
 - **Critical**: `_get()` calls `_refresh_credentials()` before EVERY request
 - This applies the currently loaded credential sources without restarting the server
 - Automatic cookie rotation: captures refreshed `argocd.token` from response headers
+- On a 401, `_refresh_credentials_after_auth_failure()` retries once from the non-interactive
+  sources in order: a rotated cookie on the response, then a newer `argocd.token` from Chrome. If
+  Chrome has no matching cookie, or the same value, the attempt is reported rather than retried
 
 **src/mcp_read_only_argocd/exceptions.py** - Custom exception hierarchy
 - `ArgoCDError` (base), `ConnectionNotFoundError`, `AuthenticationError`
@@ -102,6 +111,8 @@ Session-based authentication using Argo CD browser cookies:
 - Tokens are reloaded from the active connection before each request, but persisted rotated state takes precedence
 - Automatic capture and persistence of rotated tokens from Set-Cookie headers
 - Rotated session state is keyed by `connection_name`
+- A 401 triggers one non-interactive refresh attempt, falling back to the `argocd.token` cookie in
+  the local Chrome profile; there is no interactive login path
 
 ## Key Design Decisions
 
@@ -111,3 +122,19 @@ Session-based authentication using Argo CD browser cookies:
 4. **Multiple instance support**: Each connection has its own connector with independent configuration
 5. **MCP error handling**: Let exceptions propagate; framework handles them properly
 6. **NDJSON log parsing**: Argo CD log endpoints return newline-delimited JSON; the connector parses this automatically
+
+## Releasing
+
+A merged PR does **not** ship to PyPI on its own — publishing is triggered by pushing a `vX.Y.Z`
+git tag, which runs `.github/workflows/publish.yml`. See [`RELEASING.md`](RELEASING.md) for the
+authoritative checklist; the short version:
+
+1. **Bump the version** in `pyproject.toml` `[project].version`, then refresh the lockfile:
+   `uv sync --extra dev`.
+2. **Promote the changelog**: move the `## [Unreleased]` items into a new `## [X.Y.Z] - YYYY-MM-DD`
+   section of `CHANGELOG.md`.
+3. **Commit on `main`** (`pyproject.toml` + `CHANGELOG.md` + `uv.lock`), then tag and push — the
+   workflow validates that the tag matches `pyproject.toml` and fails the release if it does not:
+   `git tag vX.Y.Z && git push origin main && git push origin vX.Y.Z`.
+4. **Approve the publish**: the final job pauses on the GitHub `pypi` environment for manual
+   approval, then publishes via PyPI Trusted Publishing (OIDC — no stored token).
