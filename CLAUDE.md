@@ -44,14 +44,14 @@ uv run pytest
 **src/mcp_read_only_argocd/config.py** - Configuration management
 - `ArgoCDConnection` (Pydantic model): Validates connection settings
 - `ConfigParser`: Loads connections and session tokens from YAML
-- Session token state is keyed by `connection_name`
-- **Dynamic token reloading**: the server hot-reloads changed YAML before tool calls, and `reload_session_token()` overlays persisted session cache on every request
+- `session_token` is the only credential source; there is no separate state file or environment-variable layer
+- **Dynamic token reloading**: the server hot-reloads changed YAML before tool calls, and `reload_session_token()` re-applies the currently loaded value on every request. A rotated token is written back into `connections.yaml` itself (`_persist_token_to_yaml`), matched by `connection_name`
 
 **src/mcp_read_only_argocd/chrome_session.py** - Browser cookie loader
 - `load_session_token_from_chrome(url)` reads the `argocd.token` cookie matching a connection's
   host out of the local Chrome cookie store (`Profile 1` by default)
-- This is what makes the "browser session cookie" authentication in the overview work; it is the
-  non-interactive recovery source when the configured token has gone stale
+- Normal authentication is the `session_token` pasted into `connections.yaml`; Chrome is only consulted
+  as the non-interactive recovery source after a 401, when the configured token has gone stale
 
 **src/mcp_read_only_argocd/argocd_connector.py** - Argo CD API client
 - `ArgoCDConnector` wraps httpx for Argo CD API calls
@@ -81,7 +81,7 @@ Tools are organized into domain-specific modules under `src/mcp_read_only_argocd
 | `cluster_tools.py` | 2 tools | Registered clusters |
 | `repository_tools.py` | 2 tools | Git repositories |
 
-Each module exports a `register_*_tools(mcp, connectors)` function.
+Each module exports a `register_*_tools(mcp, connectors)` function; `register_core_tools` also takes the `connections` list.
 
 ### Configuration Flow
 
@@ -89,7 +89,7 @@ Each module exports a `register_*_tools(mcp, connectors)` function.
 2. For each connection, `_process_connection()` creates an `ArgoCDConnection`
 3. Session tokens are loaded from each connection's `session_token` field
 4. Tool calls check whether `connections.yaml` changed and keep the last good config if reload fails
-5. On each API request, `reload_session_token()` re-reads the currently loaded token and persisted session cache; persisted state overrides the YAML value when both are present
+5. On each API request, `reload_session_token()` re-applies the currently loaded token; after a successful rotation the new value replaces it both in memory and in `connections.yaml`
 
 ### Error Handling Pattern
 
@@ -108,9 +108,9 @@ Tool functions use `get_connector()` for validation instead of manual checks.
 Session-based authentication using Argo CD browser cookies:
 - Tokens are stored in the local runtime `connections.yaml`
 - Changes to runtime `connections.yaml` are hot-reloaded before tool calls
-- Tokens are reloaded from the active connection before each request, but persisted rotated state takes precedence
+- Tokens are reloaded from the active connection before each request
 - Automatic capture and persistence of rotated tokens from Set-Cookie headers
-- Rotated session state is keyed by `connection_name`
+- Rotated tokens are written back into `connections.yaml`, into the entry matching `connection_name`
 - A 401 triggers one non-interactive refresh attempt, falling back to the `argocd.token` cookie in
   the local Chrome profile; there is no interactive login path
 
@@ -118,7 +118,7 @@ Session-based authentication using Argo CD browser cookies:
 
 1. **Read-only by design**: Only GET requests are performed
 2. **Session token reload**: Tokens are reloaded from the configured credential sources on every request
-3. **Local YAML credential storage**: Tokens are read from the runtime `connections.yaml` and may be cached in the local session state file after rotation
+3. **Local YAML credential storage**: Tokens are read from the runtime `connections.yaml`, and rotated tokens are written back to that same file — there is no separate session state file
 4. **Multiple instance support**: Each connection has its own connector with independent configuration
 5. **MCP error handling**: Let exceptions propagate; framework handles them properly
 6. **NDJSON log parsing**: Argo CD log endpoints return newline-delimited JSON; the connector parses this automatically
