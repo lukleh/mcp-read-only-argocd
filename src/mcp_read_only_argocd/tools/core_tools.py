@@ -13,7 +13,7 @@ from mcp.server.mcpserver import MCPServer
 
 from ..argocd_connector import ArgoCDConnector
 from ..config import ArgoCDConnection
-from ..validation import get_connector, render_tool_result
+from ..validation import get_connector, render_tool_result, surface_tool_errors
 
 
 def register_core_tools(
@@ -30,6 +30,7 @@ def register_core_tools(
     """
 
     @mcp.tool()
+    @surface_tool_errors
     async def list_connections() -> str:
         """
         List all available Argo CD connections with their configuration details.
@@ -54,6 +55,7 @@ def register_core_tools(
         return json.dumps(conn_list, indent=2)
 
     @mcp.tool()
+    @surface_tool_errors
     async def get_version(connection_name: str) -> str:
         """
         Get Argo CD version information.
@@ -68,6 +70,7 @@ def register_core_tools(
         return await render_tool_result(connector.get_version())
 
     @mcp.tool()
+    @surface_tool_errors
     async def get_settings(connection_name: str) -> str:
         """
         Get Argo CD settings.

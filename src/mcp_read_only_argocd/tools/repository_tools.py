@@ -10,7 +10,7 @@ from collections.abc import Mapping
 from mcp.server.mcpserver import MCPServer
 
 from ..argocd_connector import ArgoCDConnector
-from ..validation import get_connector, render_tool_result
+from ..validation import get_connector, render_tool_result, surface_tool_errors
 
 
 def register_repository_tools(
@@ -25,6 +25,7 @@ def register_repository_tools(
     """
 
     @mcp.tool()
+    @surface_tool_errors
     async def list_repositories(connection_name: str) -> str:
         """
         List all repositories configured in Argo CD.
@@ -39,6 +40,7 @@ def register_repository_tools(
         return await render_tool_result(connector.list_repositories())
 
     @mcp.tool()
+    @surface_tool_errors
     async def get_repository(connection_name: str, repo: str) -> str:
         """
         Get detailed information about a specific repository.
