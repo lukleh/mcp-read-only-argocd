@@ -13,7 +13,7 @@ from collections.abc import Mapping
 from mcp.server.mcpserver import MCPServer
 
 from ..argocd_connector import ArgoCDConnector
-from ..validation import get_connector, render_tool_result
+from ..validation import get_connector, render_tool_result, surface_tool_errors
 
 
 def register_application_tools(
@@ -28,6 +28,7 @@ def register_application_tools(
     """
 
     @mcp.tool()
+    @surface_tool_errors
     async def list_applications(
         connection_name: str,
         projects: list[str] | None = None,
@@ -50,6 +51,7 @@ def register_application_tools(
         )
 
     @mcp.tool()
+    @surface_tool_errors
     async def get_application(connection_name: str, name: str) -> str:
         """
         Get detailed information about a specific application.
@@ -65,6 +67,7 @@ def register_application_tools(
         return await render_tool_result(connector.get_application(name))
 
     @mcp.tool()
+    @surface_tool_errors
     async def get_application_resource_tree(connection_name: str, name: str) -> str:
         """
         Get the Kubernetes resource tree for an application.
@@ -82,6 +85,7 @@ def register_application_tools(
         return await render_tool_result(connector.get_application_resource_tree(name))
 
     @mcp.tool()
+    @surface_tool_errors
     async def get_application_managed_resources(
         connection_name: str,
         name: str,
@@ -116,6 +120,7 @@ def register_application_tools(
         )
 
     @mcp.tool()
+    @surface_tool_errors
     async def get_application_logs(
         connection_name: str,
         name: str,

@@ -25,7 +25,8 @@ MCP Read-Only Argo CD Server provides read-only access to Argo CD instances via 
 **src/mcp_read_only_argocd/server.py** - MCP server entry point
 - `ReadOnlyArgoCDServer` class manages connections and orchestrates tool registration
 - Calls domain-specific registration functions from `src/mcp_read_only_argocd/tools/`
-- Error handling: Let exceptions propagate naturally - the MCP framework handles them
+- Error handling: every tool carries `@surface_tool_errors` below `@mcp.tool()`, so anticipated
+  failures reach the caller with their message (see "Error Handling Pattern")
 
 **src/mcp_read_only_argocd/config.py** - Configuration management
 - `ArgoCDConnection` (Pydantic model): Validates connection settings
@@ -86,7 +87,12 @@ Custom exceptions in `src/mcp_read_only_argocd/exceptions.py` provide clear, typ
 - `ArgoCDAPIError`: Other HTTP errors with status code
 - `ArgoCDTimeoutError`: Request timeout
 
-The MCP framework automatically converts exceptions to proper error responses.
+Since mcp 2.1 the SDK reports any exception other than `ToolError` to the caller as the generic
+`Error executing tool <name>`. `surface_tool_errors` in `validation.py` re-raises the types in
+`ANTICIPATED_TOOL_ERRORS` (`ArgoCDError`, `ValueError`, `OSError`) as `ToolError` so the caller
+sees the reason; anything else stays a crash with its traceback in the server log. Stack it below
+`@mcp.tool()` on every new tool; `tests/test_tool_error_surfacing.py` fails if one is missing.
+`AuthenticationError` is still returned as a JSON payload by `render_tool_result()`.
 Tool functions use `get_connector()` for validation instead of manual checks.
 
 ### Authentication
@@ -106,7 +112,7 @@ Session-based authentication using Argo CD browser cookies:
 2. **Session token reload**: Tokens are reloaded from the configured credential sources on every request
 3. **Local YAML credential storage**: Tokens are read from the runtime `connections.yaml`, and rotated tokens are written back to that same file — there is no separate session state file
 4. **Multiple instance support**: Each connection has its own connector with independent configuration
-5. **MCP error handling**: Let exceptions propagate; framework handles them properly
+5. **MCP error handling**: Raise the typed errors; `@surface_tool_errors` forwards their message to the caller
 6. **NDJSON log parsing**: Argo CD log endpoints return newline-delimited JSON; the connector parses this automatically
 
 ## Coding Style & Naming Conventions

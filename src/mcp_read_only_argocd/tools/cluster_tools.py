@@ -10,7 +10,7 @@ from collections.abc import Mapping
 from mcp.server.mcpserver import MCPServer
 
 from ..argocd_connector import ArgoCDConnector
-from ..validation import get_connector, render_tool_result
+from ..validation import get_connector, render_tool_result, surface_tool_errors
 
 
 def register_cluster_tools(
@@ -25,6 +25,7 @@ def register_cluster_tools(
     """
 
     @mcp.tool()
+    @surface_tool_errors
     async def list_clusters(connection_name: str) -> str:
         """
         List all clusters registered in Argo CD.
@@ -39,6 +40,7 @@ def register_cluster_tools(
         return await render_tool_result(connector.list_clusters())
 
     @mcp.tool()
+    @surface_tool_errors
     async def get_cluster(connection_name: str, server: str) -> str:
         """
         Get detailed information about a specific cluster.

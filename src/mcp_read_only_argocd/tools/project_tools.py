@@ -10,7 +10,7 @@ from collections.abc import Mapping
 from mcp.server.mcpserver import MCPServer
 
 from ..argocd_connector import ArgoCDConnector
-from ..validation import get_connector, render_tool_result
+from ..validation import get_connector, render_tool_result, surface_tool_errors
 
 
 def register_project_tools(
@@ -25,6 +25,7 @@ def register_project_tools(
     """
 
     @mcp.tool()
+    @surface_tool_errors
     async def list_projects(connection_name: str) -> str:
         """
         List all projects in Argo CD.
@@ -41,6 +42,7 @@ def register_project_tools(
         return await render_tool_result(connector.list_projects())
 
     @mcp.tool()
+    @surface_tool_errors
     async def get_project(connection_name: str, name: str) -> str:
         """
         Get detailed information about a specific project.
